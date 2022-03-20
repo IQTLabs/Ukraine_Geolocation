@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os
-import re
+import tqdm
 import torch
 import torchvision
 import pandas as pd
@@ -51,9 +51,16 @@ class OneDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         data = {}
+        data['idx'] = idx
         data['path_csv'] = self.input_dir
         data['path_listed'] = self.df.iloc[idx]['path']
         data['path_relative'] = self.paths_relative[idx]
+        data['path_absolute'] = os.path.join(data['path_csv'],
+                                             data['path_relative'])
+
+        data['image'] = Image.open(data['path_absolute'])
+        if self.transform is not None:
+            data['image'] = self.transform(data['image'])
 
         return data
 
@@ -69,7 +76,7 @@ class OneDataset(torch.utils.data.Dataset):
             if len(l) == 4:
                 return '_'.join(l[2:])
             else:
-                raise Exception('! Invalid string in ' + __name__)
+                raise Exception('! Invalid string in populate_latlon().')
         names = self.df['path'].apply(lambda x: os.path.splitext(os.path.split(x)[1])[0])
         strings = names.apply(select_fields)
         self.df[['lat', 'lon']] = strings.str.split('_', expand=True)
@@ -91,7 +98,7 @@ def get_transform(view='surface', preprocess=True, finalprocess=True):
                 torchvision.transforms.Resize((224,224))
             )
         else:
-            raise Exception('! Invalid view in ' + __name__)
+            raise Exception('! Invalid view in get_transform().')
     if finalprocess:
         transform_list.extend([
             torchvision.transforms.ToTensor(),
@@ -121,18 +128,17 @@ def preprocess(input_file, output_dir, view='surface'):
     dataset = OneDataset(input_file, view=view, transform=transform)
     dataset.populate_latlon()
 
-    print(dataset.df)
-    print(dataset.paths_relative)
-    #for idx in range(len(dataset)):
-    #    print(dataset[idx])
+    for idx in tqdm.tqdm(range(len(dataset))):
+        data = dataset[idx]
+        output_path = os.path.join(output_dir, data['path_relative'])
+        output_subdir = os.path.split(output_path)[0]
+        os.makedirs(output_subdir, exist_ok=True)
+        data['image'].save(output_path)
 
 
 def save_features(view='surface'):
-
     transform = get_transform(view)
-
     model = load_model(view)
-
     img = Image.open('../example/60949863@N02_7984662477_43.533763_-89.290620.jpg')
     batch = torch.autograd.Variable(transform(img).unsqueeze(0))
     logit = model.forward(batch)
@@ -142,6 +148,12 @@ def save_features(view='surface'):
 
 
 if __name__ == '__main__':
-    preprocess('/local_data/crossviewusa/streetview_images.txt', '../temp', view='overhead')
+    choice = 1
+    if choice == 1:
+        preprocess('/local_data/crossviewusa/sample/streetview_images.txt',
+                   '/local_data/crossviewusa/preprocessed', view='surface')
+    elif choice == 2:
+        preprocess('/local_data/crossviewusa/sample/all_images.txt',
+                   '/local_data/crossviewusa/preprocessed', view='overhead')
     #preprocess('/local_data/crossviewusa/sample/streetview_images.txt', '../temp', view='overhead')
     #save_features()
