@@ -21,32 +21,42 @@ class OneDataset(torch.utils.data.Dataset):
         self.zoom = zoom # 18, 16, 14
         self.rule = rule # cvusa, literal
         self.transform = transform
+
+        # Load entries from input file
         self.df = pd.read_csv(
             self.input_file, header=None,
             names=['path', 'lat', 'lon']
         )
-    def __len__(self):
-        return len(self.df)
-    def __getitem__(self, idx):
-        data = {}
-        data['path_csv'] = os.path.split(self.input_file)[0]
-        data['path_listed'] = self.df.iloc[idx]['path']
-        data['path_relative'] = data['path_listed']
+
+        # Create series with true relative file paths
+        self.input_dir = os.path.split(self.input_file)[0]
+        self.paths_relative = self.df['path']
         if self.view == 'overhead' and self.rule == 'cvusa':
             # Convert CVUSA streetview surface path to overhead path
-            data['path_relative'] = data['path_relative'].replace(
-                'streetview/cutouts', 'streetview_aerial/' + str(self.zoom), 1)
-            data['path_relative'] = data['path_relative'].replace(
-                '_90.jpg', '.jpg', 1)
-            data['path_relative'] = data['path_relative'].replace(
-                '_270.jpg', '.jpg', 1)
+            self.paths_relative = self.paths_relative.str.replace(
+                'streetview/cutouts', 'streetview_aerial/' + str(self.zoom),
+                n=1, regex=False)
+            self.paths_relative = self.paths_relative.str.replace(
+                '_90.jpg', '.jpg', n=1, regex=False)
+            self.paths_relative = self.paths_relative.str.replace(
+                '_270.jpg', '.jpg', n=1, regex=False)
             # Convert CVUSA flickr surface path to overhead path
-            data['path_relative'] = data['path_relative'].replace(
-                'flickr', 'flickr_aerial/' + str(self.zoom), 1)
-            data['path_relative'] = re.sub(
-                r'[0-9]+@N[0-9]+_[0-9]+_', '', data['path_relative'])
+            self.paths_relative = self.paths_relative.str.replace(
+                'flickr', 'flickr_aerial/' + str(self.zoom), n=1, regex=False)
+            self.paths_relative = self.paths_relative.str.replace(
+                r'[0-9]+@N[0-9]+_[0-9]+_', '', n=1, regex=True)
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        data = {}
+        data['path_csv'] = self.input_dir
+        data['path_listed'] = self.df.iloc[idx]['path']
+        data['path_relative'] = self.paths_relative[idx]
 
         return data
+
     def populate_latlon(self):
         """
         Populate latitude and longitude columns from path column.
@@ -111,8 +121,10 @@ def preprocess(input_file, output_dir, view='surface'):
     dataset = OneDataset(input_file, view=view, transform=transform)
     dataset.populate_latlon()
 
-    for idx in range(len(dataset)):
-        print(dataset[idx])
+    print(dataset.df)
+    print(dataset.paths_relative)
+    #for idx in range(len(dataset)):
+    #    print(dataset[idx])
 
 
 def save_features(view='surface'):
