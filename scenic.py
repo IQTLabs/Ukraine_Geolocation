@@ -29,6 +29,10 @@ class OneDataset(torch.utils.data.Dataset):
             self.input_file, header=None
         )
         self.df.rename(columns={0:'path', 1:'lat', 2:'lon'}, inplace=True)
+        if 'lat' not in self.df:
+            self.df['lat'] = None
+        if 'lon' not in self.df:
+            self.df['lon'] = None
 
         # Create series with true relative file paths
         self.input_dir = os.path.split(self.input_file)[0]
@@ -158,7 +162,7 @@ def extract_features(input_file, output_file, view='surface',
 
     # Generate feature vectors
     feat_vecs = None
-    num_batches = len(dataset)//batch_size
+    num_batches = len(dataset)//batch_size + (len(dataset)%batch_size > 0)
     for batch, data in tqdm.tqdm(enumerate(loader), total=num_batches):
         images = data['image'].to(device)
         feat_vecs_part = model(images)
@@ -169,9 +173,8 @@ def extract_features(input_file, output_file, view='surface',
 
     # Load feature vectors into DataFrame, and save as CSV
     feat_vecs_df = pd.DataFrame(feat_vecs.cpu().numpy())
-    dataset.df = pd.concat([dataset.df, feat_vecs_df], axis=1)
+    dataset.df = pd.concat([dataset.df.iloc[:, :3], feat_vecs_df], axis=1)
     dataset.df.to_csv(output_file, header=False, index=False)
-
 
 
 def example_features(path='../example/60949863@N02_7984662477_43.533763_-89.290620.jpg', view='surface'):
