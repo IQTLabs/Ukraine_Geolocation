@@ -179,7 +179,8 @@ def extract_features(input_file, output_file, view='surface',
     dataset.df.to_csv(output_file, header=False, index=False)
 
 
-def train(input_file, view='overhead', batch_size=64, num_workers=8,
+def train(input_file, view='overhead', arch='alexnet',
+          batch_size=64, num_workers=8,
           val_quantity=10, num_epochs=999999):
     """
     Train a model to predict a feature vector from corresponding image.
@@ -193,11 +194,11 @@ def train(input_file, view='overhead', batch_size=64, num_workers=8,
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=num_workers)
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=num_workers)
 
-    # Model, loss, optimizer
-    model = load_model(view='surface').to(device) # Init w/ surface weights
+    # Model, loss, optimizer (Note: Init model w/ surface weights regardless)
+    model = load_model(view='surface', arch=arch).to(device)
     loss_func = torch.nn.PairwiseDistance()
-    optimizer = torch.optim.SGD(model.parameters(), lr=1E-5)
-    #optimizer = torch.optim.Adam(model.parameters(), lr=1E-5)
+    #optimizer = torch.optim.SGD(model.parameters(), lr=1E-5)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1E-5)
 
     # Loop through epochs
     best_loss = None
@@ -238,8 +239,15 @@ def train(input_file, view='overhead', batch_size=64, num_workers=8,
 
             print('  %5s: avg loss = %f' % (phase, running_loss / running_count))
 
+        # Save weights if this is the lowest observed validation loss
+        if best_loss is None or running_loss / running_count < best_loss:
+            print('-------> new best')
+            best_loss = running_loss / running_count
+            model_path = '../weights/%s_%s.pth.tar' % (arch, view)
+            torch.save(model.state_dict(), model_path)
 
-def example_features(path='../example/60949863@N02_7984662477_43.533763_-89.290620.jpg', view='surface'):
+
+def example_features(path, view='surface'):
     transform = get_transform(view)
     model = load_model(view)
     img = Image.open(path)
@@ -253,7 +261,7 @@ def example_features(path='../example/60949863@N02_7984662477_43.533763_-89.2906
 if __name__ == '__main__':
     choice = 4
     if choice == 0:
-        example_features()
+        example_features('../example/60949863@N02_7984662477_43.533763_-89.290620.jpg')
     elif choice == 1:
         preprocess('/local_data/crossviewusa/streetview_images.txt',
                    '/local_data/crossviewusa/preprocessed', view='surface')
