@@ -200,6 +200,15 @@ def train(input_file, view='overhead', arch='alexnet',
     #optimizer = torch.optim.SGD(model.parameters(), lr=1E-5)
     optimizer = torch.optim.Adam(model.parameters(), lr=1E-5)
 
+    # Optionally resume training from where it left off
+    # Note: Add "resume=False" to arguments of train()
+    # To do: Load checkpoint
+    # if resume:
+    #     init_epoch = checkpoint['epoch']
+    #     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    # else:
+    #     init_epoch = 0
+
     # Loop through epochs
     best_loss = None
     for epoch in range(num_epochs):
@@ -243,8 +252,16 @@ def train(input_file, view='overhead', arch='alexnet',
         if best_loss is None or running_loss / running_count < best_loss:
             print('-------> new best')
             best_loss = running_loss / running_count
-            model_path = '../weights/%s_%s.pth.tar' % (arch, view)
-            torch.save(model.state_dict(), model_path)
+            checkpoint_path = '../weights/%s_%s.pth.tar' % (arch, view)
+            checkpoint = {
+                'view': view,
+                'arch': arch,
+                'epoch': epoch + 1,
+                'state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'val_loss': best_loss,
+            }
+            torch.save(checkpoint, checkpoint_path)
 
 
 def example_features(path, view='surface'):
