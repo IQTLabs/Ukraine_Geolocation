@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import time
 import tqdm
 import torch
 import torchvision
@@ -25,9 +26,7 @@ class OneDataset(torch.utils.data.Dataset):
         self.transform = transform
 
         # Load entries from input file
-        self.df = pd.read_csv(
-            self.input_file, header=None
-        )
+        self.df = pd.read_csv(self.input_file, header=None)
         self.df.rename(columns={0:'path', 1:'lat', 2:'lon'}, inplace=True)
         if 'lat' not in self.df:
             self.df['lat'] = None
@@ -63,6 +62,9 @@ class OneDataset(torch.utils.data.Dataset):
         data['path_relative'] = self.paths_relative[idx]
         data['path_absolute'] = os.path.join(data['path_csv'],
                                              data['path_relative'])
+
+        if len(self.df.columns) > 3:
+            data['vector'] = torch.tensor(self.df.iloc[idx, 3:].values.astype('float32'))
 
         data['image'] = Image.open(data['path_absolute'])
         if self.transform is not None:
@@ -177,6 +179,66 @@ def extract_features(input_file, output_file, view='surface',
     dataset.df.to_csv(output_file, header=False, index=False)
 
 
+def train(input_file, view='overhead', batch_size=64, num_workers=8,
+          val_quantity=10, num_epochs=999999):
+    """
+    Train a model to predict a feature vector from corresponding image.
+    In particular, train a model to predict scene vector from overhead image.
+    """
+    transform = get_transform(view, preprocess=False, finalprocess=True)
+
+    # Data
+    dataset = OneDataset(input_file, view=view, transform=transform)
+    train_set, val_set = torch.utils.data.random_split(dataset, [len(dataset) - val_quantity, val_quantity])
+    train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=num_workers)
+    val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=num_workers)
+
+    # Model, loss, optimizer
+    model = load_model(view='surface').to(device) # Init w/ surface weights
+    loss_func = torch.nn.PairwiseDistance()
+    optimizer = torch.optim.SGD(model.parameters(), lr=1E-5)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=1E-5)
+
+    # Loop through epochs
+    best_loss = None
+    for epoch in range(num_epochs):
+        print('Epoch %d, %s' % (epoch + 1, time.ctime(time.time())))
+
+        for phase in ['train', 'val']:
+            running_count = 0
+            running_loss = 0.
+
+            if phase == 'train':
+                loader = train_loader
+                model.train()
+            elif phase == 'val':
+                loader = val_loader
+                model.eval()
+
+            # Loop through batches of data
+            for batch, data in enumerate(loader):
+                images = data['image'].to(device)
+                target_vectors = data['vector'].to(device)
+
+                with torch.set_grad_enabled(phase == 'train'):
+
+                    # Forward and loss (train and val)
+                    infer_vectors = model(images)
+                    loss = torch.sum(loss_func(infer_vectors, target_vectors))
+
+                    # Backward and optimization (train only)
+                    if phase == 'train':
+                        optimizer.zero_grad()
+                        loss.backward()
+                        optimizer.step()
+
+                count = target_vectors.size(0)
+                running_count += count
+                running_loss += loss.item()
+
+            print('  %5s: avg loss = %f' % (phase, running_loss / running_count))
+
+
 def example_features(path='../example/60949863@N02_7984662477_43.533763_-89.290620.jpg', view='surface'):
     transform = get_transform(view)
     model = load_model(view)
@@ -189,16 +251,18 @@ def example_features(path='../example/60949863@N02_7984662477_43.533763_-89.2906
 
 
 if __name__ == '__main__':
-    choice = 3
+    choice = 4
     if choice == 0:
         example_features()
     elif choice == 1:
         preprocess('/local_data/crossviewusa/streetview_images.txt',
                    '/local_data/crossviewusa/preprocessed', view='surface')
     elif choice == 2:
-        preprocess('/local_data/crossviewusa/flickr_images.txt',
+        preprocess('/local_data/crossviewusa/all_images.txt',
                    '/local_data/crossviewusa/preprocessed', view='overhead')
     elif choice == 3:
         extract_features('/local_data/crossviewusa/sample/streetview_images.txt',
                          '/local_data/crossviewusa/sample/surface_features.txt',
                          populate_latlon=True)
+    elif choice == 4:
+        train('/local_data/crossviewusa/sample/surface_features.txt')
