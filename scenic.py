@@ -10,7 +10,8 @@ import pandas as pd
 from PIL import Image
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-
+device_parallel = True
+device_ids = None
 
 class OneDataset(torch.utils.data.Dataset):
     """
@@ -149,7 +150,7 @@ def preprocess(input_file, output_dir, view='surface'):
 
 
 def extract_features(input_file, output_file, view='surface',
-                     batch_size=64, num_workers=8,
+                     batch_size=256, num_workers=12,
                      populate_latlon=False):
     """
     Use the model to generate a feature vector for each image,
@@ -161,6 +162,8 @@ def extract_features(input_file, output_file, view='surface',
         dataset.populate_latlon()
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=num_workers)
     model = load_model(view).to(device)
+    if device_parallel and torch.cuda.device_count() > 1:
+        model = torch.nn.DataParallel(model, device_ids=device_ids)
     torch.set_grad_enabled(False)
 
     # Generate feature vectors
@@ -181,7 +184,7 @@ def extract_features(input_file, output_file, view='surface',
 
 
 def train(input_file, view='overhead', arch='alexnet',
-          batch_size=64, num_workers=8,
+          batch_size=64, num_workers=12,
           val_quantity=10, num_epochs=999999):
     """
     Train a model to predict a feature vector from corresponding image.
@@ -197,6 +200,8 @@ def train(input_file, view='overhead', arch='alexnet',
 
     # Model, loss, optimizer (Note: Init model w/ surface weights regardless)
     model = load_model(view='surface', arch=arch).to(device)
+    if device_parallel and torch.cuda.device_count() > 1:
+        model = torch.nn.DataParallel(model, device_ids=device_ids)
     loss_func = torch.nn.PairwiseDistance()
     optimizer = torch.optim.SGD(model.parameters(), lr=1E-5, momentum=0.9)
     #optimizer = torch.optim.Adam(model.parameters(), lr=1E-5)
@@ -278,7 +283,7 @@ def example_features(path, view='surface'):
 
 
 if __name__ == '__main__':
-    choice = 3
+    choice = 4
     if choice == 0:
         example_features('../example/60949863@N02_7984662477_43.533763_-89.290620.jpg')
     elif choice == 1:
