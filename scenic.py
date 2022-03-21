@@ -26,9 +26,9 @@ class OneDataset(torch.utils.data.Dataset):
 
         # Load entries from input file
         self.df = pd.read_csv(
-            self.input_file, header=None,
-            names=['path', 'lat', 'lon']
+            self.input_file, header=None
         )
+        self.df.rename(columns={0:'path', 1:'lat', 2:'lon'}, inplace=True)
 
         # Create series with true relative file paths
         self.input_dir = os.path.split(self.input_file)[0]
@@ -139,32 +139,39 @@ def preprocess(input_file, output_dir, view='surface'):
         output_subdir = os.path.split(output_path)[0]
         os.makedirs(output_subdir, exist_ok=True)
         data['image'].save(output_path)
-    # To do: save CSV file with latlon
 
 
-def extract_features_from_images(input_file, output_file, view='surface',
-                                 batch_size=64, num_workers=8):
+def extract_features(input_file, output_file, view='surface',
+                     batch_size=64, num_workers=8,
+                     populate_latlon=False):
     """
     Use the model to generate a feature vector for each image,
     saving these in a new CSV file.
     """
     transform = get_transform(view, preprocess=False, finalprocess=True)
     dataset = OneDataset(input_file, view=view, transform=transform)
-    dataset.populate_latlon()
+    if populate_latlon:
+        dataset.populate_latlon()
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=num_workers)
     model = load_model(view).to(device)
     torch.set_grad_enabled(False)
 
+    # Generate feature vectors
     feat_vecs = None
-    for batch, data in enumerate(loader):
-        data = data.to(device)
-        feat_vecs_part = model(data)
+    num_batches = len(dataset)//batch_size
+    for batch, data in tqdm.tqdm(enumerate(loader), total=num_batches):
+        images = data['image'].to(device)
+        feat_vecs_part = model(images)
         if feat_vecs is None:
             feat_vecs = feat_vecs_part
         else:
             feat_vecs = torch.cat((feat_vecs, feat_vecs_part), dim=0)
 
-    # To do: save CSV file after adding features (and latlon?)
+    # Load feature vectors into DataFrame, and save as CSV
+    feat_vecs_df = pd.DataFrame(feat_vecs.cpu().numpy())
+    dataset.df = pd.concat([dataset.df, feat_vecs_df], axis=1)
+    dataset.df.to_csv(output_file, header=False, index=False)
+
 
 
 def example_features(path='../example/60949863@N02_7984662477_43.533763_-89.290620.jpg', view='surface'):
@@ -179,7 +186,7 @@ def example_features(path='../example/60949863@N02_7984662477_43.533763_-89.2906
 
 
 if __name__ == '__main__':
-    choice = 2
+    choice = 3
     if choice == 0:
         example_features()
     elif choice == 1:
@@ -189,4 +196,6 @@ if __name__ == '__main__':
         preprocess('/local_data/crossviewusa/flickr_images.txt',
                    '/local_data/crossviewusa/preprocessed', view='overhead')
     elif choice == 3:
-        pass
+        extract_features('/local_data/crossviewusa/sample/streetview_images.txt',
+                         '/local_data/crossviewusa/sample/surface_features.txt',
+                         populate_latlon=True)
