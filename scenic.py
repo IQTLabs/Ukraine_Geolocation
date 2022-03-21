@@ -7,6 +7,8 @@ import torchvision
 import pandas as pd
 from PIL import Image
 
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
 
 class OneDataset(torch.utils.data.Dataset):
     """
@@ -123,7 +125,10 @@ def load_model(view='surface', arch='alexnet'):
 
 
 def preprocess(input_file, output_dir, view='surface'):
-
+    """
+    Preprocess images (resize and crop, if applicable),
+    saving output to a new folder.
+    """
     transform = get_transform(view, preprocess=True, finalprocess=False)
     dataset = OneDataset(input_file, view=view, transform=transform)
     dataset.populate_latlon()
@@ -134,12 +139,38 @@ def preprocess(input_file, output_dir, view='surface'):
         output_subdir = os.path.split(output_path)[0]
         os.makedirs(output_subdir, exist_ok=True)
         data['image'].save(output_path)
+    # To do: save CSV file with latlon
 
 
-def save_features(view='surface'):
+def extract_features_from_images(input_file, output_file, view='surface',
+                                 batch_size=64, num_workers=8):
+    """
+    Use the model to generate a feature vector for each image,
+    saving these in a new CSV file.
+    """
+    transform = get_transform(view, preprocess=False, finalprocess=True)
+    dataset = OneDataset(input_file, view=view, transform=transform)
+    dataset.populate_latlon()
+    loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=num_workers)
+    model = load_model(view).to(device)
+    torch.set_grad_enabled(False)
+
+    feat_vecs = None
+    for batch, data in enumerate(loader):
+        data = data.to(device)
+        feat_vecs_part = model(data)
+        if feat_vecs is None:
+            feat_vecs = feat_vecs_part
+        else:
+            feat_vecs = torch.cat((feat_vecs, feat_vecs_part), dim=0)
+
+    # To do: save CSV file after adding features (and latlon?)
+
+
+def example_features(path='../example/60949863@N02_7984662477_43.533763_-89.290620.jpg', view='surface'):
     transform = get_transform(view)
     model = load_model(view)
-    img = Image.open('../example/60949863@N02_7984662477_43.533763_-89.290620.jpg')
+    img = Image.open(path)
     batch = torch.autograd.Variable(transform(img).unsqueeze(0))
     logit = model.forward(batch)
     h_x = torch.nn.functional.softmax(logit, 1).data.squeeze()
@@ -148,12 +179,14 @@ def save_features(view='surface'):
 
 
 if __name__ == '__main__':
-    choice = 1
-    if choice == 1:
-        preprocess('/local_data/crossviewusa/sample/streetview_images.txt',
+    choice = 2
+    if choice == 0:
+        example_features()
+    elif choice == 1:
+        preprocess('/local_data/crossviewusa/streetview_images.txt',
                    '/local_data/crossviewusa/preprocessed', view='surface')
     elif choice == 2:
-        preprocess('/local_data/crossviewusa/sample/all_images.txt',
+        preprocess('/local_data/crossviewusa/flickr_images.txt',
                    '/local_data/crossviewusa/preprocessed', view='overhead')
-    #preprocess('/local_data/crossviewusa/sample/streetview_images.txt', '../temp', view='overhead')
-    #save_features()
+    elif choice == 3:
+        pass
