@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import math
 import time
 import tqdm
 import torch
@@ -197,8 +198,8 @@ def train(input_file, view='overhead', arch='alexnet',
     # Model, loss, optimizer (Note: Init model w/ surface weights regardless)
     model = load_model(view='surface', arch=arch).to(device)
     loss_func = torch.nn.PairwiseDistance()
-    #optimizer = torch.optim.SGD(model.parameters(), lr=1E-5)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1E-5)
+    optimizer = torch.optim.SGD(model.parameters(), lr=1E-5, momentum=0.9)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=1E-5)
 
     # Optionally resume training from where it left off
     # Note: Add "resume=False" to arguments of train()
@@ -234,7 +235,8 @@ def train(input_file, view='overhead', arch='alexnet',
 
                     # Forward and loss (train and val)
                     infer_vectors = model(images)
-                    loss = torch.sum(loss_func(infer_vectors, target_vectors))
+                    loss = torch.sum(loss_func(infer_vectors, target_vectors))\
+                           / math.sqrt(target_vectors.size(0))
 
                     # Backward and optimization (train only)
                     if phase == 'train':
@@ -276,7 +278,7 @@ def example_features(path, view='surface'):
 
 
 if __name__ == '__main__':
-    choice = 4
+    choice = 3
     if choice == 0:
         example_features('../example/60949863@N02_7984662477_43.533763_-89.290620.jpg')
     elif choice == 1:
@@ -286,8 +288,8 @@ if __name__ == '__main__':
         preprocess('/local_data/crossviewusa/all_images.txt',
                    '/local_data/crossviewusa/preprocessed', view='overhead')
     elif choice == 3:
-        extract_features('/local_data/crossviewusa/sample/streetview_images.txt',
-                         '/local_data/crossviewusa/sample/surface_features.txt',
+        extract_features('/local_data/crossviewusa/streetview_images.txt',
+                         '/local_data/crossviewusa/surface_features.txt',
                          populate_latlon=True)
     elif choice == 4:
         train('/local_data/crossviewusa/sample/surface_features.txt')
