@@ -281,8 +281,9 @@ def metrics(surface_file, overhead_file):
     surface_dataset = OneDataset(surface_file, view='surface', transform=None)
     overhead_dataset = OneDataset(overhead_file, view='overhead', transform=None)
     surface_vectors = torch.tensor(surface_dataset.df.iloc[:, 3:].values.astype('float32'))
-    overhead_vectors = torch.tensor(surface_dataset.df.iloc[:, 3:].values.astype('float32'))
+    overhead_vectors = torch.tensor(overhead_dataset.df.iloc[:, 3:].values.astype('float32'))
 
+    # Measure performance
     count = surface_vectors.size(0)
     ranks = np.zeros([count], dtype=int)
     for idx in tqdm.tqdm(range(count)):
@@ -290,7 +291,6 @@ def metrics(surface_file, overhead_file):
         distances = torch.pow(torch.sum(torch.pow(overhead_vectors - surface_vector, 2), dim=1), 0.5)
         distance = distances[idx]
         ranks[idx] = torch.sum(torch.le(distances, distance)).item()
-
     top_one = np.sum(ranks <= 1) / count * 100
     top_five = np.sum(ranks <= 5) / count * 100
     top_ten = np.sum(ranks <= 10) / count * 100
