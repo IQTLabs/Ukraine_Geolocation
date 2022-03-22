@@ -6,6 +6,7 @@ import time
 import tqdm
 import torch
 import torchvision
+import numpy as np
 import pandas as pd
 from PIL import Image
 
@@ -271,6 +272,42 @@ def train(input_file, view='overhead', arch='alexnet',
             torch.save(checkpoint, checkpoint_path)
 
 
+def metrics(surface_file, overhead_file):
+    """
+    Given a CSV file of surface feature vectors and a CSV file of overhead
+    feature vectors for the same places in the same order, determine
+    performance metrics for ranking overhead matches for each surface image.
+    """
+    surface_dataset = OneDataset(surface_file, view='surface', transform=None)
+    overhead_dataset = OneDataset(overhead_file, view='overhead', transform=None)
+    surface_vectors = torch.tensor(surface_dataset.df.iloc[:, 3:].values.astype('float32'))
+    overhead_vectors = torch.tensor(surface_dataset.df.iloc[:, 3:].values.astype('float32'))
+
+    count = surface_vectors.size(0)
+    ranks = np.zeros([count], dtype=int)
+    for idx in tqdm.tqdm(range(count)):
+        surface_vector = torch.unsqueeze(surface_vectors[idx], 0)
+        distances = torch.pow(torch.sum(torch.pow(overhead_vectors - surface_vector, 2), dim=1), 0.5)
+        distance = distances[idx]
+        ranks[idx] = torch.sum(torch.le(distances, distance)).item()
+
+    top_one = np.sum(ranks <= 1) / count * 100
+    top_five = np.sum(ranks <= 5) / count * 100
+    top_ten = np.sum(ranks <= 10) / count * 100
+    top_percent = np.sum(ranks * 100 <= count) / count * 100
+    mean = np.mean(ranks)
+    median = np.median(ranks)
+
+    # Print performance
+    print('Top  1: {:.2f}%'.format(top_one))
+    print('Top  5: {:.2f}%'.format(top_five))
+    print('Top 10: {:.2f}%'.format(top_ten))
+    print('Top 1%: {:.2f}%'.format(top_percent))
+    print('Avg. Rank: {:.2f}'.format(mean))
+    print('Med. Rank: {:.2f}'.format(median))
+    print('Locations: {}'.format(count))
+
+
 def example_features(path, view='surface'):
     transform = get_transform(view)
     model = load_model(view)
@@ -285,16 +322,21 @@ def example_features(path, view='surface'):
 if __name__ == '__main__':
     choice = 4
     if choice == 0:
+        # Feature vector for a single image
         example_features('../example/60949863@N02_7984662477_43.533763_-89.290620.jpg')
     elif choice == 1:
+        # Preprocess images
         preprocess('/local_data/crossviewusa/streetview_images.txt',
                    '/local_data/crossviewusa/preprocessed', view='surface')
     elif choice == 2:
-        preprocess('/local_data/crossviewusa/all_images.txt',
-                   '/local_data/crossviewusa/preprocessed', view='overhead')
-    elif choice == 3:
+        # Save feature vectors
         extract_features('/local_data/crossviewusa/streetview_images.txt',
                          '/local_data/crossviewusa/surface_features.txt',
                          populate_latlon=True)
-    elif choice == 4:
+    elif choice == 3:
+        # Train model
         train('/local_data/crossviewusa/sample/surface_features.txt')
+    elif choice == 4:
+        # Evaluation metrics
+        metrics('/local_data/crossviewusa/sample/surface_features.txt',
+                '/local_data/crossviewusa/sample/overhead_features.txt')
