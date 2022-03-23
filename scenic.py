@@ -320,23 +320,4 @@ def example_features(path, view='surface'):
 
 
 if __name__ == '__main__':
-    choice = 4
-    if choice == 0:
-        # Feature vector for a single image
-        example_features('../example/60949863@N02_7984662477_43.533763_-89.290620.jpg')
-    elif choice == 1:
-        # Preprocess images
-        preprocess('/local_data/crossviewusa/streetview_images.txt',
-                   '/local_data/crossviewusa/preprocessed', view='surface')
-    elif choice == 2:
-        # Save feature vectors
-        extract_features('/local_data/crossviewusa/streetview_images.txt',
-                         '/local_data/crossviewusa/surface_features.txt',
-                         populate_latlon=True)
-    elif choice == 3:
-        # Train model
-        train('/local_data/crossviewusa/sample/surface_features.txt')
-    elif choice == 4:
-        # Evaluation metrics
-        metrics('/local_data/crossviewusa/sample/surface_features.txt',
-                '/local_data/crossviewusa/sample/overhead_features.txt')
+    pass
