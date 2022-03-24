@@ -284,9 +284,11 @@ def metrics(surface_file, overhead_file):
     performance metrics for ranking overhead matches for each surface image.
     """
     surface_dataset = OneDataset(surface_file, view='surface', transform=None)
+    surface_vectors = torch.tensor(surface_dataset.df.iloc[:, 3:].values.astype('float32'), device=device)
+    surface_dataset = None
     overhead_dataset = OneDataset(overhead_file, view='overhead', transform=None)
-    surface_vectors = torch.tensor(surface_dataset.df.iloc[:, 3:].values.astype('float32')).to(device)
-    overhead_vectors = torch.tensor(overhead_dataset.df.iloc[:, 3:].values.astype('float32')).to(device)
+    overhead_vectors = torch.tensor(overhead_dataset.df.iloc[:, 3:].values.astype('float32'), device=device)
+    overhead_dataset = None
 
     # Measure performance
     count = surface_vectors.size(0)
