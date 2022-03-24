@@ -29,7 +29,7 @@ class OneDataset(torch.utils.data.Dataset):
         self.transform = transform
 
         # Load entries from input file
-        if os.path.splitext(output_file)[1].lower() \
+        if os.path.splitext(self.input_file)[1].lower() \
            in ['.csv', '.txt', '.asc', '.ascii']:
             typedict = {0:'string', 1:'string', 2:'string'}
             for i in range(3, 3+365):
@@ -37,7 +37,7 @@ class OneDataset(torch.utils.data.Dataset):
             self.df = pd.read_csv(self.input_file, header=None, dtype=typedict)
             self.df.rename(columns={0:'path', 1:'lat', 2:'lon'}, inplace=True)
         else:
-            pass
+            self.df = pd.read_pickle(self.input_file)
         if 'lat' not in self.df:
             self.df['lat'] = None
         if 'lon' not in self.df:
