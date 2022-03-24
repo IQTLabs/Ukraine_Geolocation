@@ -29,7 +29,10 @@ class OneDataset(torch.utils.data.Dataset):
         self.transform = transform
 
         # Load entries from input file
-        self.df = pd.read_csv(self.input_file, header=None)
+        typedict = {0:'string', 1:'string', 2:'string'}
+        for i in range(3, 3+365):
+            typedict[i] = 'float32'
+        self.df = pd.read_csv(self.input_file, header=None, dtype=typedict)
         self.df.rename(columns={0:'path', 1:'lat', 2:'lon'}, inplace=True)
         if 'lat' not in self.df:
             self.df['lat'] = None
@@ -284,10 +287,10 @@ def metrics(surface_file, overhead_file):
     performance metrics for ranking overhead matches for each surface image.
     """
     surface_dataset = OneDataset(surface_file, view='surface', transform=None)
-    surface_vectors = torch.tensor(surface_dataset.df.iloc[:, 3:].values.astype('float32'), device=device)
+    surface_vectors = torch.tensor(surface_dataset.df.iloc[:, 3:].values, device=device, dtype=torch.float32)
     surface_dataset = None
     overhead_dataset = OneDataset(overhead_file, view='overhead', transform=None)
-    overhead_vectors = torch.tensor(overhead_dataset.df.iloc[:, 3:].values.astype('float32'), device=device)
+    overhead_vectors = torch.tensor(overhead_dataset.df.iloc[:, 3:].values, device=device, dtype=torch.float32)
     overhead_dataset = None
 
     # Measure performance
