@@ -146,7 +146,6 @@ def preprocess(input_file, output_dir, view='surface'):
     """
     transform = get_transform(view, preprocess=True, finalprocess=False)
     dataset = OneDataset(input_file, view=view, transform=transform)
-    dataset.populate_latlon()
 
     for idx in tqdm.tqdm(range(len(dataset))):
         data = dataset[idx]
@@ -286,8 +285,8 @@ def metrics(surface_file, overhead_file):
     """
     surface_dataset = OneDataset(surface_file, view='surface', transform=None)
     overhead_dataset = OneDataset(overhead_file, view='overhead', transform=None)
-    surface_vectors = torch.tensor(surface_dataset.df.iloc[:, 3:].values.astype('float32'))
-    overhead_vectors = torch.tensor(overhead_dataset.df.iloc[:, 3:].values.astype('float32'))
+    surface_vectors = torch.tensor(surface_dataset.df.iloc[:, 3:].values.astype('float32')).to(device)
+    overhead_vectors = torch.tensor(overhead_dataset.df.iloc[:, 3:].values.astype('float32')).to(device)
 
     # Measure performance
     count = surface_vectors.size(0)
