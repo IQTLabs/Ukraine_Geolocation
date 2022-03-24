@@ -158,7 +158,7 @@ def preprocess(input_file, output_dir, view='surface', rule='cvusa'):
         data['image'].save(output_path)
 
 
-def extract_features(input_file, output_file, view='surface',
+def extract_features(input_file, output_file, view='surface', rule='cvusa',
                      batch_size=256, num_workers=12,
                      populate_latlon=False):
     """
@@ -166,7 +166,7 @@ def extract_features(input_file, output_file, view='surface',
     saving these in a new CSV file.
     """
     transform = get_transform(view, preprocess=False, finalprocess=True)
-    dataset = OneDataset(input_file, view=view, transform=transform)
+    dataset = OneDataset(input_file, view=view, rule=rule, transform=transform)
     if populate_latlon:
         dataset.populate_latlon()
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=num_workers)
@@ -192,7 +192,7 @@ def extract_features(input_file, output_file, view='surface',
     dataset.df.to_csv(output_file, header=False, index=False)
 
 
-def train(input_file, view='overhead', arch='alexnet',
+def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
           batch_size=64, num_workers=12,
           val_quantity=10, num_epochs=999999):
     """
@@ -202,7 +202,7 @@ def train(input_file, view='overhead', arch='alexnet',
     transform = get_transform(view, preprocess=False, finalprocess=True)
 
     # Data
-    dataset = OneDataset(input_file, view=view, transform=transform)
+    dataset = OneDataset(input_file, view=view, rule=rule, transform=transform)
     train_set, val_set = torch.utils.data.random_split(dataset, [len(dataset) - val_quantity, val_quantity])
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=num_workers)
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=num_workers)
