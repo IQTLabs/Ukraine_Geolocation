@@ -53,6 +53,12 @@ class OneDataset(torch.utils.data.Dataset):
                 'flickr', 'flickr_aerial/' + str(self.zoom), n=1, regex=False)
             self.paths_relative = self.paths_relative.str.replace(
                 r'[0-9]+@N[0-9]+_[0-9]+_', '', n=1, regex=True)
+            self.paths_relative = self.paths_relative.str.replace(
+                '.png', '.jpg', n=1, regex=False)
+        if self.view == 'overhead' and self.rule == 'witw':
+            # Convert WITW surface path to overhead path
+            self.paths_relative = self.paths_relative.str.replace(
+                'surface', 'overhead', n=1, regex=False)
 
     def __len__(self):
         return len(self.df)
