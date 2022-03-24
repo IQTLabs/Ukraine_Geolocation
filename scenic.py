@@ -29,11 +29,15 @@ class OneDataset(torch.utils.data.Dataset):
         self.transform = transform
 
         # Load entries from input file
-        typedict = {0:'string', 1:'string', 2:'string'}
-        for i in range(3, 3+365):
-            typedict[i] = 'float32'
-        self.df = pd.read_csv(self.input_file, header=None, dtype=typedict)
-        self.df.rename(columns={0:'path', 1:'lat', 2:'lon'}, inplace=True)
+        if os.path.splitext(output_file)[1].lower() \
+           in ['.csv', '.txt', '.asc', '.ascii']:
+            typedict = {0:'string', 1:'string', 2:'string'}
+            for i in range(3, 3+365):
+                typedict[i] = 'float32'
+            self.df = pd.read_csv(self.input_file, header=None, dtype=typedict)
+            self.df.rename(columns={0:'path', 1:'lat', 2:'lon'}, inplace=True)
+        else:
+            pass
         if 'lat' not in self.df:
             self.df['lat'] = None
         if 'lon' not in self.df:
@@ -186,15 +190,19 @@ def extract_features(input_file, output_file, view='surface', rule='cvusa',
         else:
             feat_vecs = torch.cat((feat_vecs, feat_vecs_part), dim=0)
 
-    # Load feature vectors into DataFrame, and save as CSV
+    # Load feature vectors into DataFrame, and save
     feat_vecs_df = pd.DataFrame(feat_vecs.cpu().numpy())
     dataset.df = pd.concat([dataset.df.iloc[:, :3], feat_vecs_df], axis=1)
-    dataset.df.to_csv(output_file, header=False, index=False)
+    if os.path.splitext(output_file)[1].lower() \
+       in ['.csv', '.txt', '.asc', '.ascii']:
+        dataset.df.to_csv(output_file, header=False, index=False)
+    else:
+        dataset.df.to_pickle(output_file)
 
 
 def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
-          batch_size=64, num_workers=12,
-          val_quantity=10, num_epochs=999999):
+          batch_size=256, num_workers=12,
+          val_quantity=1000, num_epochs=999999):
     """
     Train a model to predict a feature vector from corresponding image.
     In particular, train a model to predict scene vector from overhead image.
