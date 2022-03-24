@@ -142,13 +142,13 @@ def load_model(view='surface', arch='alexnet'):
     return model
 
 
-def preprocess(input_file, output_dir, view='surface'):
+def preprocess(input_file, output_dir, view='surface', rule='cvusa'):
     """
     Preprocess images (resize and crop, if applicable),
     saving output to a new folder.
     """
     transform = get_transform(view, preprocess=True, finalprocess=False)
-    dataset = OneDataset(input_file, view=view, transform=transform)
+    dataset = OneDataset(input_file, view=view, rule=rule, transform=transform)
 
     for idx in tqdm.tqdm(range(len(dataset))):
         data = dataset[idx]
