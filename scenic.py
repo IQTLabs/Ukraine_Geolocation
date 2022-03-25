@@ -83,6 +83,8 @@ class OneDataset(torch.utils.data.Dataset):
             data['vector'] = torch.tensor(self.df.iloc[idx, 3:].values.astype('float32'))
 
         data['image'] = Image.open(data['path_absolute'])
+        if data['image'].mode != 'RGB':
+            data['image'] = data['image'].convert('RGB')
         if self.transform is not None:
             data['image'] = self.transform(data['image'])
 
