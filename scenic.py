@@ -216,6 +216,8 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
     train_set, val_set = torch.utils.data.random_split(dataset, [len(dataset) - val_quantity, val_quantity])
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=num_workers)
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=num_workers)
+    train_batches = len(train_set) // batch_size
+    val_batches = -((-len(val_set)) // batch_size)
 
     # Model, loss, optimizer (Note: Init model w/ surface weights regardless)
     model = load_model(view='surface', arch=arch).to(device)
@@ -251,7 +253,8 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
                 model.eval()
 
             # Loop through batches of data
-            for batch, data in enumerate(loader):
+            num_batches = train_batches if phase == 'train' else val_batches
+            for batch, data in tqdm.tqdm(enumerate(loader), total=num_batches):
                 images = data['image'].to(device)
                 target_vectors = data['vector'].to(device)
 
