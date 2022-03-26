@@ -224,8 +224,9 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
     if device_parallel and torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model, device_ids=device_ids)
     loss_func = torch.nn.PairwiseDistance()
-    optimizer = torch.optim.SGD(model.parameters(), lr=1E-5, momentum=0.9)
-    #optimizer = torch.optim.Adam(model.parameters(), lr=1E-5)
+    optimizer = torch.optim.SGD(model.parameters(), lr=1E-4,
+                                momentum=0.9, weight_decay=5E-4)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=1E-3)
 
     # Optionally resume training from where it left off
     # Note: Add "resume=False" to arguments of train()
