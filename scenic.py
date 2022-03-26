@@ -300,10 +300,10 @@ def metrics(surface_file, overhead_file):
     feature vectors for the same places in the same order, determine
     performance metrics for ranking overhead matches for each surface image.
     """
-    surface_dataset = OneDataset(surface_file, view='surface', transform=None)
+    surface_dataset = OneDataset(surface_file, view='surface')
     surface_vectors = torch.tensor(surface_dataset.df.iloc[:, 3:].values, device=device, dtype=torch.float32)
     surface_dataset = None
-    overhead_dataset = OneDataset(overhead_file, view='overhead', transform=None)
+    overhead_dataset = OneDataset(overhead_file, view='overhead')
     overhead_vectors = torch.tensor(overhead_dataset.df.iloc[:, 3:].values, device=device, dtype=torch.float32)
     overhead_dataset = None
 
@@ -332,15 +332,49 @@ def metrics(surface_file, overhead_file):
     print('Locations: {}'.format(count))
 
 
-def example_features(path, view='surface'):
+def example_features(path, view='surface', verbose=True):
     transform = get_transform(view)
     model = load_model(view)
     img = Image.open(path)
     batch = torch.autograd.Variable(transform(img).unsqueeze(0))
-    logit = model.forward(batch)
-    h_x = torch.nn.functional.softmax(logit, 1).data.squeeze()
-    print(h_x)
-    print(torch.argmax(h_x))
+    logits = model.forward(batch)
+    probs = torch.nn.functional.softmax(logits, 1).data.squeeze()
+    if verbose:
+        print(probs)
+        print(torch.argmax(probs))
+    return logits.squeeze()
+
+
+class Translator(object):
+    """
+    Translate feature vector(s) from one feature space to another by using
+    a lookup table of pairs of corresponding feature vectors in both spaces
+    """
+    def __init__(self, domain_file, codomain_file,
+                 domain_view='surface', codomain_view='overhead'):
+        # Load lookup table
+        domain_dataset = OneDataset(domain_file, view=domain_view)
+        self.domain_vectors = torch.tensor(domain_dataset.df.iloc[:, 3:].values, device=device, dtype=torch.float32)
+        domain_dataset = None
+        codomain_dataset = OneDataset(codomain_file, view=codomain_view)
+        self.codomain_vectors = torch.tensor(codomain_dataset.df.iloc[:, 3:].values, device=device, dtype=torch.float32)
+        codomain_dataset = None
+
+    def translate_vector(self, input_vector, n=30):
+        input_vector = torch.unsqueeze(input_vector, 0).to(device)
+        print('input_vector', input_vector.size())
+        distances = torch.pow(torch.sum(torch.pow(self.domain_vectors - input_vector, 2), dim=1), 0.5)
+        print('distances', distances.size())
+        _, closest_idxs = torch.topk(distances, k=n, largest=False) # unsorted
+        print('closest_idxs', closest_idxs.size())
+        corres_vectors = torch.index_select(self.codomain_vectors, 0, closest_idxs)
+        print('corres_vectors', corres_vectors.size())
+        output_vector = torch.mean(corres_vectors, 0)
+        print('output_vector', output_vector.size())
+        return output_vector
+
+    def translate_file(self, input_path, n=30):
+        pass
 
 
 if __name__ == '__main__':
