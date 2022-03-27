@@ -108,6 +108,13 @@ class OneDataset(torch.utils.data.Dataset):
         self.df[['lat', 'lon']] = strings.str.split('_', expand=True)
 
 
+class QuadRotation(object):
+    def __call__(self, data):
+        factor = torch.randint(4, ()).item()
+        data = torch.rot90(data, factor, [-2, -1])
+        return data
+
+
 def get_transform(view='surface', preprocess=True, finalprocess=True, augment=False):
     """
     Return image transform
@@ -124,7 +131,7 @@ def get_transform(view='surface', preprocess=True, finalprocess=True, augment=Fa
             if view == 'surface':
                 pass
             elif view == 'overhead':
-                pass
+                transforms.append(QuadRotation())
             else:
                 raise Exception('! Invalid view in get_transform().')
         transforms.append(torchvision.transforms.ToTensor())
