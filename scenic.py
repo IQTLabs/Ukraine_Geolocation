@@ -108,30 +108,29 @@ class OneDataset(torch.utils.data.Dataset):
         self.df[['lat', 'lon']] = strings.str.split('_', expand=True)
 
 
-def get_transform(view='surface', preprocess=True, finalprocess=True):
+def get_transform(view='surface', preprocess=True, finalprocess=True, augment=False):
     """
     Return image transform
     """
-    transform_list = []
+    transforms = []
     if preprocess:
-        if view == 'surface':
-            transform_list.extend([
-                torchvision.transforms.Resize((256,256)),
-                torchvision.transforms.CenterCrop(224),
-            ])
-        elif view == 'overhead':
-            transform_list.append(
-                torchvision.transforms.Resize((224,224))
-            )
-        else:
-            raise Exception('! Invalid view in get_transform().')
+        transforms.append(torchvision.transforms.Resize(256))
     if finalprocess:
-        transform_list.extend([
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize([0.485, 0.456, 0.406],
-                                             [0.229, 0.224, 0.225])
-        ])
-    transform = torchvision.transforms.Compose(transform_list)
+        if not augment:
+            transforms.append(torchvision.transforms.Resize(224))
+        else: # augmentation
+            transforms.append(torchvision.transforms.RandomResizedCrop(224))
+            transforms.append(torchvision.transforms.RandomHorizontalFlip())
+            if view == 'surface':
+                pass
+            elif view == 'overhead':
+                pass
+            else:
+                raise Exception('! Invalid view in get_transform().')
+        transforms.append(torchvision.transforms.ToTensor())
+        transforms.append(torchvision.transforms.Normalize(
+            [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]))
+    transform = torchvision.transforms.Compose(transforms)
     return transform
 
 
