@@ -114,10 +114,10 @@ def get_transform(view='surface', preprocess=True, finalprocess=True, augment=Fa
     """
     transforms = []
     if preprocess:
-        transforms.append(torchvision.transforms.Resize(256))
+        transforms.append(torchvision.transforms.Resize((256,256)))
     if finalprocess:
         if not augment:
-            transforms.append(torchvision.transforms.Resize(224))
+            transforms.append(torchvision.transforms.Resize((224,224)))
         else: # augmentation
             transforms.append(torchvision.transforms.RandomResizedCrop(224))
             transforms.append(torchvision.transforms.RandomHorizontalFlip())
@@ -147,15 +147,30 @@ def load_model(view='surface', arch='alexnet'):
     return model
 
 
-def preprocess(input_file, output_dir, view='surface', rule='cvusa'):
+def preprocess(input_file, output_dir, view='surface', rule='cvusa',
+               tar_file=None, tar_delete=None):
     """
     Preprocess images (resize and crop, if applicable),
     saving output to a new folder.
     """
     transform = get_transform(view, preprocess=True, finalprocess=False)
     dataset = OneDataset(input_file, view=view, rule=rule, transform=transform)
+    if tar_file is not None:
+        import subprocess
+        Image.MAX_IMAGE_PIXELS = 1000000000
 
     for idx in tqdm.tqdm(range(len(dataset))):
+        # Optionally extract images from tar in bunches
+        if tar_file is not None:
+            if idx % 1000 == 0:
+                spaths = ' '.join(dataset.df[idx:idx+1000]['path'].values)
+                cmd = 'cd ' + os.path.split(input_file)[0]
+                if tar_delete is not None:
+                    cmd += ' && rm -rfv ' + tar_delete
+                cmd += ' && tar -xvf ' + tar_file + ' ' + spaths
+                subprocess.check_output(cmd, shell=True)
+
+        # Preprocess and save images
         data = dataset[idx]
         output_path = os.path.join(output_dir, data['path_relative'])
         output_subdir = os.path.split(output_path)[0]
