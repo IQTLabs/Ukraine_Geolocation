@@ -348,33 +348,46 @@ def example_features(path, view='surface', verbose=True):
 class Translator(object):
     """
     Translate feature vector(s) from one feature space to another by using
-    a lookup table of pairs of corresponding feature vectors in both spaces
+    a lookup table of pairs of corresponding feature vectors in both spaces.
     """
-    def __init__(self, domain_file, codomain_file,
-                 domain_view='surface', codomain_view='overhead'):
+    def __init__(self, domain_file, codomain_file):
         # Load lookup table
-        domain_dataset = OneDataset(domain_file, view=domain_view)
+        domain_dataset = OneDataset(domain_file)
         self.domain_vectors = torch.tensor(domain_dataset.df.iloc[:, 3:].values, device=device, dtype=torch.float32)
         domain_dataset = None
-        codomain_dataset = OneDataset(codomain_file, view=codomain_view)
+        codomain_dataset = OneDataset(codomain_file)
         self.codomain_vectors = torch.tensor(codomain_dataset.df.iloc[:, 3:].values, device=device, dtype=torch.float32)
         codomain_dataset = None
 
     def translate_vector(self, input_vector, n=30):
         input_vector = torch.unsqueeze(input_vector, 0).to(device)
-        print('input_vector', input_vector.size())
         distances = torch.pow(torch.sum(torch.pow(self.domain_vectors - input_vector, 2), dim=1), 0.5)
-        print('distances', distances.size())
         _, closest_idxs = torch.topk(distances, k=n, largest=False) # unsorted
-        print('closest_idxs', closest_idxs.size())
         corres_vectors = torch.index_select(self.codomain_vectors, 0, closest_idxs)
-        print('corres_vectors', corres_vectors.size())
         output_vector = torch.mean(corres_vectors, 0)
-        print('output_vector', output_vector.size())
         return output_vector
 
-    def translate_file(self, input_path, n=30):
-        pass
+    def translate_file(self, input_file, output_file, n=30):
+        # Load data
+        dataset = OneDataset(input_file)
+        input_vectors = torch.tensor(dataset.df.iloc[:, 3:].values, device=device, dtype=torch.float32)
+        output_vectors = torch.zeros([input_vectors.size(0), self.codomain_vectors.size(1)], device=device, dtype=torch.float32)
+
+        # Generate feature vectors
+        count = input_vectors.size(0)
+        for idx in tqdm.tqdm(range(count)):
+            input_vector = input_vectors[idx, :]
+            output_vector = self.translate_vector(input_vector, n=n)
+            output_vectors[idx, :] = output_vector
+
+        # Load feature vectors into DataFrame, and save
+        feat_vecs_df = pd.DataFrame(output_vectors.cpu().numpy())
+        dataset.df = pd.concat([dataset.df.iloc[:, :3], feat_vecs_df], axis=1)
+        if os.path.splitext(output_file)[1].lower() \
+           in ['.csv', '.txt', '.asc', '.ascii']:
+            dataset.df.to_csv(output_file, header=False, index=False)
+        else:
+            dataset.df.to_pickle(output_file)
 
 
 if __name__ == '__main__':
