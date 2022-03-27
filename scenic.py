@@ -125,16 +125,17 @@ def get_transform(view='surface', preprocess=True, finalprocess=True, augment=Fa
     if finalprocess:
         if not augment:
             transforms.append(torchvision.transforms.Resize((224,224)))
+            transforms.append(torchvision.transforms.ToTensor())
         else: # augmentation
             transforms.append(torchvision.transforms.RandomResizedCrop(224))
             transforms.append(torchvision.transforms.RandomHorizontalFlip())
+            transforms.append(torchvision.transforms.ToTensor())
             if view == 'surface':
                 pass
             elif view == 'overhead':
                 transforms.append(QuadRotation())
             else:
                 raise Exception('! Invalid view in get_transform().')
-        transforms.append(torchvision.transforms.ToTensor())
         transforms.append(torchvision.transforms.Normalize(
             [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]))
     transform = torchvision.transforms.Compose(transforms)
@@ -230,7 +231,7 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
     Train a model to predict a feature vector from corresponding image.
     In particular, train a model to predict scene vector from overhead image.
     """
-    transform = get_transform(view, preprocess=False, finalprocess=True)
+    transform = get_transform(view, preprocess=False, finalprocess=True, augment=True)
 
     # Data
     dataset = OneDataset(input_file, view=view, rule=rule, transform=transform)
