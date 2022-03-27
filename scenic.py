@@ -367,18 +367,18 @@ class Translator(object):
         output_vector = torch.mean(corres_vectors, 0)
         return output_vector
 
-    def translate_file(self, input_file, output_file, n=30):
+    def translate_file(self, input_file, output_file, n=30, d=device):
         # Load data
         dataset = OneDataset(input_file)
-        input_vectors = torch.tensor(dataset.df.iloc[:, 3:].values, device=device, dtype=torch.float32)
-        output_vectors = torch.zeros([input_vectors.size(0), self.codomain_vectors.size(1)], device=device, dtype=torch.float32)
+        input_vectors = torch.tensor(dataset.df.iloc[:, 3:].values, device=d, dtype=torch.float32)
+        output_vectors = torch.zeros([input_vectors.size(0), self.codomain_vectors.size(1)], device=d, dtype=torch.float32)
 
         # Generate feature vectors
         count = input_vectors.size(0)
         for idx in tqdm.tqdm(range(count)):
             input_vector = input_vectors[idx, :]
             output_vector = self.translate_vector(input_vector, n=n)
-            output_vectors[idx, :] = output_vector
+            output_vectors[idx, :] = output_vector.to(d)
 
         # Load feature vectors into DataFrame, and save
         feat_vecs_df = pd.DataFrame(output_vectors.cpu().numpy())
