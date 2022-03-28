@@ -125,6 +125,7 @@ def get_transform(view='surface', preprocess=True, finalprocess=True, augment=Fa
     if finalprocess:
         if not augment:
             transforms.append(torchvision.transforms.Resize((224,224)))
+            #transforms.append(torchvision.transforms.CenterCrop(224))
             transforms.append(torchvision.transforms.ToTensor())
         else: # augmentation
             transforms.append(torchvision.transforms.RandomResizedCrop(224))
@@ -246,9 +247,9 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
     if device_parallel and torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model, device_ids=device_ids)
     loss_func = torch.nn.PairwiseDistance()
-    optimizer = torch.optim.SGD(model.parameters(), lr=1E-4,
-                                momentum=0.9, weight_decay=5E-4)
-    #optimizer = torch.optim.Adam(model.parameters(), lr=1E-3)
+    # optimizer = torch.optim.SGD(model.parameters(), lr=1E-4,
+    #                             momentum=0.9, weight_decay=5E-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1E-4)
 
     # Optionally resume training from where it left off
     # Note: Add "resume=False" to arguments of train()
@@ -277,7 +278,8 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
 
             # Loop through batches of data
             num_batches = train_batches if phase == 'train' else val_batches
-            for batch, data in tqdm.tqdm(enumerate(loader), total=num_batches):
+            # for batch, data in tqdm.tqdm(enumerate(loader), total=num_batches):
+            for batch, data in enumerate(loader):
                 images = data['image'].to(device)
                 target_vectors = data['vector'].to(device)
 
