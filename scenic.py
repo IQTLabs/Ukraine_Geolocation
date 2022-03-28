@@ -66,6 +66,10 @@ class OneDataset(torch.utils.data.Dataset):
             # Convert WITW surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
                 'surface', 'overhead', n=1, regex=False)
+        if self.view == 'overhead' and self.rule == 'gtcrossview':
+            # Convert GTCrossView surface path to overhead path
+            self.paths_relative = self.paths_relative.str.replace(
+                'streetview', 'overhead', n=1, regex=False)
 
     def __len__(self):
         return len(self.df)
