@@ -132,7 +132,8 @@ def get_transform(view='surface', preprocess=True, finalprocess=True, augment=Fa
             #transforms.append(torchvision.transforms.CenterCrop(224))
             transforms.append(torchvision.transforms.ToTensor())
         else: # augmentation
-            transforms.append(torchvision.transforms.RandomResizedCrop(224))
+            #transforms.append(torchvision.transforms.RandomResizedCrop(224))
+            transforms.append(torchvision.transforms.RandomResizedCrop(224, scale=(0.25, 1.)))
             transforms.append(torchvision.transforms.RandomHorizontalFlip())
             transforms.append(torchvision.transforms.ToTensor())
             if view == 'surface':
