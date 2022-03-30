@@ -233,6 +233,23 @@ def extract_features(input_file, output_file, view='surface', rule='cvusa',
     dataset.save(output_file)
 
 
+class TransformWrapper(torch.utils.data.Dataset):
+    """
+    Applies an additional transform to an existing dataset
+    without internally modifying the dataset.
+    """
+    def __init__(self, dataset, transform=None):
+        self.dataset = dataset
+        self.transform = transform
+    def __len__(self):
+        return len(self.dataset)
+    def __getitem__(self, idx):
+        data = self.dataset[idx]
+        if self.transform is not None:
+            data['image'] = self.transform(data['image'])
+        return data
+
+
 def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
           batch_size=256, num_workers=12,
           val_quantity=1000, num_epochs=999999):
@@ -240,11 +257,14 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
     Train a model to predict a feature vector from corresponding image.
     In particular, train a model to predict scene vector from overhead image.
     """
-    transform = get_transform(view, preprocess=False, finalprocess=True, augment=True)
 
-    # Data
-    dataset = OneDataset(input_file, view=view, rule=rule, transform=transform)
+    # Data and transforms
+    train_transform = get_transform(view, preprocess=False, finalprocess=True, augment=True)
+    val_transform = get_transform(view, preprocess=False, finalprocess=True, augment=False)
+    dataset = OneDataset(input_file, view=view, rule=rule, transform=None)
     train_set, val_set = torch.utils.data.random_split(dataset, [len(dataset) - val_quantity, val_quantity])
+    train_set = TransformWrapper(train_set, train_transform)
+    val_set = TransformWrapper(val_set, val_transform)
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=num_workers)
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=num_workers)
     train_batches = len(train_set) // batch_size
