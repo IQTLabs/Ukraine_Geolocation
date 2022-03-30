@@ -46,7 +46,7 @@ class OneDataset(torch.utils.data.Dataset):
         # Create series with true relative file paths
         self.input_dir = os.path.split(self.input_file)[0]
         self.paths_relative = self.df['path']
-        if self.view == 'overhead' and self.rule == 'cvusa':
+        if self.view == 'overhead' and self.rule in ['cvusa', 'cw']:
             # Convert CVUSA streetview surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
                 'streetview/cutouts', 'streetview_aerial/' + str(self.zoom),
@@ -62,11 +62,11 @@ class OneDataset(torch.utils.data.Dataset):
                 r'[0-9]+@N[0-9]+_[0-9]+_', '', n=1, regex=True)
             self.paths_relative = self.paths_relative.str.replace(
                 '.png', '.jpg', n=1, regex=False)
-        if self.view == 'overhead' and self.rule == 'witw':
+        if self.view == 'overhead' and self.rule in ['witw', 'cw']:
             # Convert WITW surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
                 'surface', 'overhead', n=1, regex=False)
-        if self.view == 'overhead' and self.rule == 'gtcrossview':
+        if self.view == 'overhead' and self.rule in ['gtcrossview']:
             # Convert GTCrossView surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
                 'streetview', 'overhead', n=1, regex=False)
@@ -93,6 +93,13 @@ class OneDataset(torch.utils.data.Dataset):
             data['image'] = self.transform(data['image'])
 
         return data
+
+    def save(self, output_file):
+        if os.path.splitext(output_file)[1].lower() \
+           in ['.csv', '.txt', '.asc', '.ascii']:
+            self.df.to_csv(output_file, header=False, index=False)
+        else:
+            self.df.to_pickle(output_file)
 
     def populate_latlon(self):
         """
@@ -223,11 +230,7 @@ def extract_features(input_file, output_file, view='surface', rule='cvusa',
     # Load feature vectors into DataFrame, and save
     feat_vecs_df = pd.DataFrame(feat_vecs.cpu().numpy())
     dataset.df = pd.concat([dataset.df.iloc[:, :3], feat_vecs_df], axis=1)
-    if os.path.splitext(output_file)[1].lower() \
-       in ['.csv', '.txt', '.asc', '.ascii']:
-        dataset.df.to_csv(output_file, header=False, index=False)
-    else:
-        dataset.df.to_pickle(output_file)
+    dataset.save(output_file)
 
 
 def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
@@ -412,11 +415,7 @@ class Translator(object):
         # Load feature vectors into DataFrame, and save
         feat_vecs_df = pd.DataFrame(output_vectors.cpu().numpy())
         dataset.df = pd.concat([dataset.df.iloc[:, :3], feat_vecs_df], axis=1)
-        if os.path.splitext(output_file)[1].lower() \
-           in ['.csv', '.txt', '.asc', '.ascii']:
-            dataset.df.to_csv(output_file, header=False, index=False)
-        else:
-            dataset.df.to_pickle(output_file)
+        dataset.save(output_file)
 
 
 if __name__ == '__main__':
