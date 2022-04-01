@@ -126,7 +126,7 @@ class QuadRotation(object):
         return data
 
 
-def get_transform(view='surface', preprocess=True, finalprocess=True, augment=False):
+def get_transform(view='surface', preprocess=True, finalprocess=True, augment=False, already_tensor=False):
     """
     Return image transform
     """
@@ -137,12 +137,14 @@ def get_transform(view='surface', preprocess=True, finalprocess=True, augment=Fa
         if not augment:
             transforms.append(torchvision.transforms.Resize((224,224)))
             #transforms.append(torchvision.transforms.CenterCrop(224))
-            transforms.append(torchvision.transforms.ToTensor())
+            if not already_tensor:
+                transforms.append(torchvision.transforms.ToTensor())
         else: # augmentation
             #transforms.append(torchvision.transforms.RandomResizedCrop(224))
             transforms.append(torchvision.transforms.RandomResizedCrop(224, scale=(0.25, 1.)))
             transforms.append(torchvision.transforms.RandomHorizontalFlip())
-            transforms.append(torchvision.transforms.ToTensor())
+            if not already_tensor:
+                transforms.append(torchvision.transforms.ToTensor())
             if view == 'surface':
                 pass
             elif view == 'overhead':
