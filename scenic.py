@@ -386,16 +386,23 @@ def metrics(surface_file, overhead_file):
     print('Locations: {}'.format(count))
 
 
-def example_features(path, view='surface', verbose=True):
-    transform = get_transform(view)
+def example_features(path, view='surface', verbose=True,
+                     names_path='categories_places365.txt'):
+    transform = get_transform(view, preprocess=False, finalprocess=True)
     model = load_model(view)
-    img = Image.open(path)
-    batch = torch.autograd.Variable(transform(img).unsqueeze(0))
-    logits = model.forward(batch)
-    probs = torch.nn.functional.softmax(logits, 1).data.squeeze()
+    image = Image.open(path)
+    batch = transform(image).unsqueeze(0)
+    torch.set_grad_enabled(False)
+    logits = model(batch).squeeze()
+    probs = torch.nn.functional.softmax(logits, 0)
     if verbose:
-        print(probs)
-        print(torch.argmax(probs))
+        df = pd.read_csv(names_path, sep=' ', header=None,
+                         names=['scenes'], usecols=[0])
+        #df['scenes'] = df['scenes'].str.split('/').apply(lambda x: x[-1])
+        df['probs'] = probs.numpy()
+        df.sort_values('probs', ascending=False, inplace=True)
+        df.reset_index(drop=True, inplace=True)
+        print(df[:5])
     return logits.squeeze()
 
 
