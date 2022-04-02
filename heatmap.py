@@ -19,7 +19,7 @@ class TileDataset(torch.utils.data.Dataset):
         ds = gdal.Translate(mem_path, self.source, projWin=self.windows[idx])
         raw = ds.ReadAsArray()
         gdal.GetDriverByName('GTiff').Delete(mem_path)
-        image = torch.from_numpy(raw.astype(np.float32))
+        image = torch.from_numpy(raw.astype(np.float32)/255.)
         data = {'image':image}
         if self.transform is not None:
             data['image'] = self.transform(data['image'])

@@ -145,12 +145,8 @@ def get_transform(view='surface', preprocess=True, finalprocess=True, augment=Fa
             transforms.append(torchvision.transforms.RandomHorizontalFlip())
             if not already_tensor:
                 transforms.append(torchvision.transforms.ToTensor())
-            if view == 'surface':
-                pass
-            elif view == 'overhead':
+            if view == 'overhead':
                 transforms.append(QuadRotation())
-            else:
-                raise Exception('! Invalid view in get_transform().')
         transforms.append(torchvision.transforms.Normalize(
             [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]))
     transform = torchvision.transforms.Compose(transforms)
