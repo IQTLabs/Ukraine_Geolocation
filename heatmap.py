@@ -1,14 +1,6 @@
 #!/usr/bin/env python
 
-import os
-import sys
-import tqdm
 import argparse
-import numpy as np
-import pandas as pd
-from skimage import io
-import torch
-import torchvision
 from osgeo import osr
 from osgeo import gdal
 
@@ -34,7 +26,8 @@ class TileDataset(torch.utils.data.Dataset):
         return data
 
 
-def sweep(sat_path, bounds, edge, offset, photo_path, csv_path):
+def sweep(sat_path, bounds, edge, offset,
+          photo_path, photo_row, csv_path, match):
 
     # Compute center and window for each satellite tile
     center_eastings = []
@@ -51,14 +44,17 @@ def sweep(sat_path, bounds, edge, offset, photo_path, csv_path):
     sat_file = gdal.Open(sat_path)
 
     # Specify transformations
-    surface_transform = get_transform('surface', preprocess=True, finalprocess=True, augment=False, already_tensor=False)
+    surface_transform = get_transform('surface', preprocess=False, finalprocess=True, augment=False, already_tensor=False)
     overhead_transform = get_transform('overhead', preprocess=False, finalprocess=True, augment=False, already_tensor=True)
 
     # Load data
-    surface_set = OneDataset(photo_path, view='surface', rule=None, transform=surface_transform)
+    surface_set = OneDataset(photo_path, view='surface', rule=None,
+                             transform=surface_transform)
     overhead_set = TileDataset(sat_file, windows, overhead_transform)
-    surface_batch = torch.unsqueeze(surface_set[0]['image'], dim=0).to(device)
-    overhead_loader = torch.utils.data.DataLoader(overhead_set, batch_size=64, shuffle=False, num_workers=1)
+    surface_batch = torch.unsqueeze(surface_set[photo_row]['image'],
+                                    dim=0).to(device)
+    overhead_loader = torch.utils.data.DataLoader(overhead_set, batch_size=64,
+                                                  shuffle=False, num_workers=1)
 
     # Load the neural networks
     surface_model = load_model('surface').to(device)
@@ -87,12 +83,22 @@ def sweep(sat_path, bounds, edge, offset, photo_path, csv_path):
     # Calculate score for each overhead image
     distances = torch.pow(torch.sum(torch.pow(feat_vecs - surface_vector, 2), dim=1), 0.5)
 
+    # Find best scene match for each overhead image
+    if match:
+        scene_path = 'categories_places365.txt'
+        scene_list = pd.read_csv(scene_path, sep=' ', header=None,
+                         names=['scenes'], usecols=[0])['scenes'].tolist()
+        match_indices = feat_vecs.argmax(dim=1).cpu().numpy()
+        match_names = [scene_list[i] for i in match_indices]
+
     # Save information to disk
     df = pd.DataFrame({
         'x': center_eastings,
         'y': center_northings,
         'dissimilarity': distances.cpu().numpy(),
     })
+    if match:
+        df['match'] = match_names
     df.to_csv(csv_path, index=False)
 
 
@@ -124,6 +130,10 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--photopath',
                         default='./images.csv',
                         help='Path to surface photo dataset CSV file')
+    parser.add_argument('-r', '--row',
+                        type=int,
+                        default=0,
+                        help='Row of surface photo within CSV file')
     parser.add_argument('-c', '--csvpath',
                         default='./geomatch.csv',
                         help='Path to output CSV file path')
@@ -134,12 +144,17 @@ if __name__ == '__main__':
                         action='store_true',
                         help='Flag to output cropped satellite image')
     parser.add_argument('-g', '--gpu',
-                        type=int, default=None, help='Which GPU to use')
+                        type=int,
+                        default=None,
+                        help='Which GPU to use')
+    parser.add_argument('-m', '--match',
+                        action='store_true',
+                        help='Flag to include best scene matches in CSV file')
     args = parser.parse_args()
     if args.gpu is not None:
         cvig.device = torch.device('cuda:' + str(args.gpu))
         device = torch.device('cuda:' + str(args.gpu))
     sweep(args.satpath, args.bounds, args.edge, args.offset,
-          args.photopath, args.csvpath)
+          args.photopath, args.row, args.csvpath, args.match)
     if args.image:
         layer(args.satpath, args.bounds, args.layerpath)
