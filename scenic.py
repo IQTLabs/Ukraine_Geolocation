@@ -25,7 +25,7 @@ class OneDataset(torch.utils.data.Dataset):
         self.input_file = input_file
         self.view = view # surface, overhead
         self.zoom = zoom # 18, 16, 14
-        self.rule = rule # cvusa, literal
+        self.rule = rule # cvusa, witw, gtcrossview, None
         self.transform = transform
 
         # Load entries from input file
@@ -46,7 +46,7 @@ class OneDataset(torch.utils.data.Dataset):
         # Create series with true relative file paths
         self.input_dir = os.path.split(self.input_file)[0]
         self.paths_relative = self.df['path']
-        if self.view == 'overhead' and self.rule in ['cvusa', 'cw']:
+        if self.view == 'overhead' and self.rule in ['cvusa', 'cw', 'cgw']:
             # Convert CVUSA streetview surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
                 'streetview/cutouts', 'streetview_aerial/' + str(self.zoom),
@@ -62,14 +62,14 @@ class OneDataset(torch.utils.data.Dataset):
                 r'[0-9]+@N[0-9]+_[0-9]+_', '', n=1, regex=True)
             self.paths_relative = self.paths_relative.str.replace(
                 '.png', '.jpg', n=1, regex=False)
-        if self.view == 'overhead' and self.rule in ['witw', 'cw']:
+        if self.view == 'overhead' and self.rule in ['witw', 'cw', 'cgw']:
             # Convert WITW surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
                 'surface', 'overhead', n=1, regex=False)
-        if self.view == 'overhead' and self.rule in ['gtcrossview']:
+        if self.view == 'overhead' and self.rule in ['gtcrossview', 'cgw']:
             # Convert GTCrossView surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
-                'streetview', 'overhead', n=1, regex=False)
+                'streetview/', 'overhead/', n=1, regex=False)
 
     def __len__(self):
         return len(self.df)
