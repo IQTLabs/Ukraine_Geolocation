@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import subprocess
 from osgeo import osr
 from osgeo import gdal
 
@@ -26,7 +27,7 @@ class TileDataset(torch.utils.data.Dataset):
         return data
 
 
-def sweep(sat_path, bounds, edge, offset,
+def sweep(sat_path, bounds, projection, edge, offset,
           photo_path, photo_row, csv_path, match):
 
     # Compute center and window for each satellite tile
@@ -99,7 +100,13 @@ def sweep(sat_path, bounds, edge, offset,
     })
     if match:
         df['match'] = match_names
-    df.to_csv(csv_path, index=False)
+    path_out_csv = os.path.splitext(csv_path)[0]+'.csv'
+    path_out_shp = os.path.splitext(csv_path)[0]+'.shp'
+    path_out_tif = os.path.splitext(csv_path)[0]+'.tif'
+    df.to_csv(path_out_csv, index=False)
+    cmd = 'ogr2ogr -s_srs EPSG:' + str(projection) + ' -t_srs EPSG:' + str(projection) + ' -oo X_POSSIBLE_NAMES=x -oo Y_POSSIBLE_NAMES=y -f "ESRI Shapefile" ' + path_out_shp + ' ' + path_out_csv
+    print(cmd)
+    subprocess.check_output(cmd, shell=True)
 
 
 def layer(sat_path, bounds, layer_path):
@@ -119,6 +126,10 @@ if __name__ == '__main__':
                         default=(305541, 5541833, 311833, 5548133),
                         metavar=('left', 'bottom', 'right', 'top'),
                         help='Bounds given as UTM coordinates in this order: min easting, min northing, max easting, max northing')
+    parser.add_argument('-j', '--projection',
+                        type=int,
+                        default=32637,
+                        help='EPSG Projection')
     parser.add_argument('-e', '--edge',
                         type=float,
                         default=368,
@@ -136,7 +147,7 @@ if __name__ == '__main__':
                         help='Row of surface photo within CSV file')
     parser.add_argument('-c', '--csvpath',
                         default='./geomatch.csv',
-                        help='Path to output CSV file path')
+                        help='Path to output CSV file')
     parser.add_argument('-l', '--layerpath',
                         default='./satlayer.tif',
                         help='Path to output cropped satellite image')
@@ -154,7 +165,7 @@ if __name__ == '__main__':
     if args.gpu is not None:
         cvig.device = torch.device('cuda:' + str(args.gpu))
         device = torch.device('cuda:' + str(args.gpu))
-    sweep(args.satpath, args.bounds, args.edge, args.offset,
+    sweep(args.satpath, args.bounds, args.projection, args.edge, args.offset,
           args.photopath, args.row, args.csvpath, args.match)
     if args.image:
         layer(args.satpath, args.bounds, args.layerpath)
