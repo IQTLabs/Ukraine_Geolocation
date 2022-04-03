@@ -96,7 +96,7 @@ def sweep(sat_path, bounds, projection, edge, offset,
     df = pd.DataFrame({
         'x': center_eastings,
         'y': center_northings,
-        'dissimilarity': distances.cpu().numpy(),
+        'similar': -distances.cpu().numpy(),
     })
     if match:
         df['match'] = match_names
@@ -105,6 +105,9 @@ def sweep(sat_path, bounds, projection, edge, offset,
     path_out_tif = os.path.splitext(csv_path)[0]+'.tif'
     df.to_csv(path_out_csv, index=False)
     cmd = 'ogr2ogr -s_srs EPSG:' + str(projection) + ' -t_srs EPSG:' + str(projection) + ' -oo X_POSSIBLE_NAMES=x -oo Y_POSSIBLE_NAMES=y -f "ESRI Shapefile" ' + path_out_shp + ' ' + path_out_csv
+    print(cmd)
+    subprocess.check_output(cmd, shell=True)
+    cmd = 'gdal_rasterize -a similar -tr ' + str(offset) + ' ' + str(offset) + ' -a_nodata 0.0 -te ' + ' '.join([str(x) for x in bounds]) + ' -ot Float32 -of GTiff ' + path_out_shp + ' ' + path_out_tif
     print(cmd)
     subprocess.check_output(cmd, shell=True)
 
