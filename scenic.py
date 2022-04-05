@@ -49,7 +49,7 @@ class OneDataset(torch.utils.data.Dataset):
         if self.view == 'overhead' and self.rule in ['cvusa', 'cw', 'cgw']:
             # Convert CVUSA streetview surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
-                'streetview/cutouts', 'streetview_aerial/' + str(self.zoom),
+                'streetview/cutouts', 'streetview_aerial_full/' + str(self.zoom),
                 n=1, regex=False)
             self.paths_relative = self.paths_relative.str.replace(
                 '_90.jpg', '.jpg', n=1, regex=False)
@@ -57,7 +57,7 @@ class OneDataset(torch.utils.data.Dataset):
                 '_270.jpg', '.jpg', n=1, regex=False)
             # Convert CVUSA flickr surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
-                'flickr', 'flickr_aerial/' + str(self.zoom), n=1, regex=False)
+                'flickr', 'flickr_aerial_full/' + str(self.zoom), n=1, regex=False)
             self.paths_relative = self.paths_relative.str.replace(
                 r'[0-9]+@N[0-9]+_[0-9]+_', '', n=1, regex=True)
             self.paths_relative = self.paths_relative.str.replace(
@@ -65,7 +65,7 @@ class OneDataset(torch.utils.data.Dataset):
         if self.view == 'overhead' and self.rule in ['witw', 'cw', 'cgw']:
             # Convert WITW surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
-                'surface', 'overhead', n=1, regex=False)
+                'surface', 'overhead_full', n=1, regex=False)
         if self.view == 'overhead' and self.rule in ['gtcrossview', 'cgw']:
             # Convert GTCrossView surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
@@ -134,6 +134,8 @@ def get_transform(view='surface', preprocess=True, finalprocess=True, augment=Fa
     if preprocess:
         transforms.append(torchvision.transforms.Resize((256,256)))
     if finalprocess:
+        if view == 'overhead':
+            transforms.append(torchvision.transforms.CenterCrop(256))
         if not augment:
             transforms.append(torchvision.transforms.Resize((224,224)))
             #transforms.append(torchvision.transforms.CenterCrop(224))
@@ -304,8 +306,7 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
 
             # Loop through batches of data
             num_batches = train_batches if phase == 'train' else val_batches
-            # for batch, data in tqdm.tqdm(enumerate(loader), total=num_batches):
-            for batch, data in enumerate(loader):
+            for batch, data in tqdm.tqdm(enumerate(loader), total=num_batches, leave=False):
                 images = data['image'].to(device)
                 target_vectors = data['vector'].to(device)
 
