@@ -134,8 +134,6 @@ def get_transform(view='surface', preprocess=True, finalprocess=True, augment=Fa
     if preprocess:
         transforms.append(torchvision.transforms.Resize((256,256)))
     if finalprocess:
-        if view == 'overhead':
-            transforms.append(torchvision.transforms.CenterCrop(256))
         if not augment:
             transforms.append(torchvision.transforms.Resize((224,224)))
             #transforms.append(torchvision.transforms.CenterCrop(224))
