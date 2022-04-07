@@ -153,11 +153,14 @@ def get_transform(view='surface', preprocess=True, finalprocess=True, augment=Fa
     return transform
 
 
-def load_model(view='surface', arch='alexnet'):
+def load_model(view='surface', arch='alexnet', suffix=None):
     """
     Based on https://github.com/CSAILVision/places365/blob/master/run_placesCNN_basic.py by Bolei Zhou
     """
-    model_path = '../weights/%s_%s.pth.tar' % (arch, view)
+    if suffix is None:
+        model_path = '../weights/%s_%s.pth.tar' % (arch, view)
+    else:
+        model_path = '../weights/%s_%s_%s.pth.tar' % (arch, view, suffix)
     model = torchvision.models.__dict__[arch](num_classes=365)
     checkpoint = torch.load(model_path, map_location=lambda storage, loc: storage)
     state_dict = {str.replace(k,'module.',''): v for k,v in checkpoint['state_dict'].items()}
