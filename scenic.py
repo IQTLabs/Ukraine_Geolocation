@@ -49,7 +49,7 @@ class OneDataset(torch.utils.data.Dataset):
         if self.view == 'overhead' and self.rule in ['cvusa', 'cw', 'cgw']:
             # Convert CVUSA streetview surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
-                'streetview/cutouts', 'streetview_aerial_full/' + str(self.zoom),
+                'streetview/cutouts', 'streetview_aerial/' + str(self.zoom),
                 n=1, regex=False)
             self.paths_relative = self.paths_relative.str.replace(
                 '_90.jpg', '.jpg', n=1, regex=False)
@@ -57,7 +57,7 @@ class OneDataset(torch.utils.data.Dataset):
                 '_270.jpg', '.jpg', n=1, regex=False)
             # Convert CVUSA flickr surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
-                'flickr', 'flickr_aerial_full/' + str(self.zoom), n=1, regex=False)
+                'flickr', 'flickr_aerial/' + str(self.zoom), n=1, regex=False)
             self.paths_relative = self.paths_relative.str.replace(
                 r'[0-9]+@N[0-9]+_[0-9]+_', '', n=1, regex=True)
             self.paths_relative = self.paths_relative.str.replace(
@@ -65,7 +65,7 @@ class OneDataset(torch.utils.data.Dataset):
         if self.view == 'overhead' and self.rule in ['witw', 'cw', 'cgw']:
             # Convert WITW surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
-                'surface', 'overhead_full', n=1, regex=False)
+                'surface', 'overhead', n=1, regex=False)
         if self.view == 'overhead' and self.rule in ['gtcrossview', 'cgw']:
             # Convert GTCrossView surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
@@ -137,16 +137,15 @@ def get_transform(view='surface', preprocess=True, finalprocess=True, augment=Fa
         if not augment:
             transforms.append(torchvision.transforms.Resize((224,224)))
             #transforms.append(torchvision.transforms.CenterCrop(224))
-            if not already_tensor:
-                transforms.append(torchvision.transforms.ToTensor())
         else: # augmentation
-            transforms.append(torchvision.transforms.RandomResizedCrop(224))
-            #transforms.append(torchvision.transforms.RandomResizedCrop(224, scale=(0.25, 1.)))
             transforms.append(torchvision.transforms.RandomHorizontalFlip())
-            if not already_tensor:
-                transforms.append(torchvision.transforms.ToTensor())
-            if view == 'overhead':
-                transforms.append(QuadRotation())
+            if view == 'surface':
+                transforms.append(torchvision.transforms.RandomResizedCrop(224))
+            elif view == 'overhead':
+                transforms.append(torchvision.transforms.RandomRotation((0,360), interpolation=torchvision.transforms.InterpolationMode.BILINEAR))
+                transforms.append(torchvision.transforms.RandomResizedCrop(224, scale=(0.25, 1.)))
+        if not already_tensor:
+            transforms.append(torchvision.transforms.ToTensor())
         transforms.append(torchvision.transforms.Normalize(
             [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]))
     transform = torchvision.transforms.Compose(transforms)
