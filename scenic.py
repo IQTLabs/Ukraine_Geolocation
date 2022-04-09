@@ -234,8 +234,8 @@ def extract_features(input_file, output_file, view='surface', rule='cvusa',
 
 
 def feature_weights(weight_outdoor_manmade=1.,
-                    weight_outdoor_natural=1.,
-                    weight_indoor=1.):
+                    weight_outdoor_natural=0.,
+                    weight_indoor=0.):
     """
     Return a vector of the importance of each scene class,
     based on its Level 1 assignment in the Scenes2 hierarchy.
@@ -312,7 +312,7 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
     model = load_model(view='surface', arch=arch).to(device)
     if device_parallel and torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model, device_ids=device_ids)
-    loss_func = WeightedPairwiseDistance()
+    loss_func = WeightedPairwiseDistance().to(device)
     # optimizer = torch.optim.SGD(model.parameters(), lr=1E-4,
     #                             momentum=0.9, weight_decay=5E-4)
     optimizer = torch.optim.Adam(model.parameters(), lr=1E-4)
@@ -352,7 +352,7 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
 
                     # Forward and loss (train and val)
                     infer_vectors = model(images)
-                    loss = loss_func(infer_vectors, target_vectors)
+                    loss = torch.sum(loss_func(infer_vectors, target_vectors))
 
                     # Backward and optimization (train only)
                     if phase == 'train':
