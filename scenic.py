@@ -233,7 +233,9 @@ def extract_features(input_file, output_file, view='surface', rule='cvusa',
     dataset.save(output_file)
 
 
-def feature_weights(weight_outdoor_manmade=1., weight_outdoor_natural=0.1, weight_indoor=0.01):
+def feature_weights(weight_outdoor_manmade=1.,
+                    weight_outdoor_natural=1.,
+                    weight_indoor=1.):
     """
     Return a vector of the importance of each scene class,
     based on its Level 1 assignment in the Scenes2 hierarchy.
@@ -248,8 +250,7 @@ def feature_weights(weight_outdoor_manmade=1., weight_outdoor_natural=0.1, weigh
         [0,1,1,1,0,0,1,0,0,1,0,1,0,0,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1,0,0,1,1,0,1,1,1,0,0,0,1,1,1,1,0,0,0,1,1,1,0,1,1,1,0,0,0,1,1,0,1,1,1,0,0,0,1,1,1,1,0,0,1,0,0,0,0,1,0,1,0,0,1,0,0,1,1,1,0,1,1,0,1,1,0,1,1,1,1,1,0,0,0,1,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1,1,0,1,0,1,0,1,1,1,1,0,1,1,1,0,1,0,1,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,1,1,0,0,0,1,0,1,0,0,1,0,0,1,1,0,0,1,0,0,0,1,1,0,1,0,0,1,0,0,1,0,0,1,0,0,0,0,0,0,1,1,0,1,0,0,0,1,1,0,0,0,0,1,0,1,1,1,0,0,1,0,1,0,1,0,0,1,0,0,1,0,0,1,0,0,0,0,0,0,1,1,0,1,1,1,1,0,0,1,0,1,0,1,0,1,0,0,1,0,1,0,0,0,0,0,1,1,0,1,0,0,1,0,1,0,0,0,0,1,0,0,0,0,0,1,1,1,0,1,1,0,0,0,0,0,0,0,0,0,1,0,1,1,0,1,0,1,1,0,0,0,0,0,0,0,1,0,0,0,1,0,1,1,0,1,1,1,0,0,1,0,0,1,1,0,1,1,0,0,1,1,1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,0]
     ])
     vector = np.amax(weights * memberships, axis=0)
-    norm = np.linalg.norm(vector)
-    return vector, norm
+    return torch.tensor(vector)
 
 
 class TransformWrapper(torch.utils.data.Dataset):
@@ -267,6 +268,24 @@ class TransformWrapper(torch.utils.data.Dataset):
         if self.transform is not None:
             data['image'] = self.transform(data['image'])
         return data
+
+
+class WeightedPairwiseDistance(torch.nn.Module):
+    """
+    Similar to torch.nn.PairwiseDistance, but with a weight assigned to each
+    element of the feature vectors.  Dimensions:
+        'weights': (D)
+        'output' and 'target': (N, D)
+    where N = batch dimension and D = vector dimension
+    """
+    def __init__(self, weights=feature_weights(), normalize=True):
+        super().__init__()
+        if normalize:
+            weights = weights / torch.linalg.vector_norm(weights)
+        weights = weights.unsqueeze(0)
+        self.register_buffer('weights', weights)
+    def forward(self, output, target):
+        return torch.linalg.vector_norm(self.weights * (output-target), dim=1)
 
 
 def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
@@ -293,7 +312,7 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
     model = load_model(view='surface', arch=arch).to(device)
     if device_parallel and torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model, device_ids=device_ids)
-    loss_func = torch.nn.PairwiseDistance()
+    loss_func = WeightedPairwiseDistance()
     # optimizer = torch.optim.SGD(model.parameters(), lr=1E-4,
     #                             momentum=0.9, weight_decay=5E-4)
     optimizer = torch.optim.Adam(model.parameters(), lr=1E-4)
@@ -333,8 +352,7 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
 
                     # Forward and loss (train and val)
                     infer_vectors = model(images)
-                    loss = torch.sum(loss_func(infer_vectors, target_vectors))\
-                           / math.sqrt(target_vectors.size(0))
+                    loss = loss_func(infer_vectors, target_vectors)
 
                     # Backward and optimization (train only)
                     if phase == 'train':
@@ -370,6 +388,7 @@ def metrics(surface_file, overhead_file):
     feature vectors for the same places in the same order, determine
     performance metrics for ranking overhead matches for each surface image.
     """
+    # Data
     surface_dataset = OneDataset(surface_file, view='surface')
     surface_vectors = torch.tensor(surface_dataset.df.iloc[:, 3:].values, device=device, dtype=torch.float32)
     surface_dataset = None
@@ -377,12 +396,15 @@ def metrics(surface_file, overhead_file):
     overhead_vectors = torch.tensor(overhead_dataset.df.iloc[:, 3:].values, device=device, dtype=torch.float32)
     overhead_dataset = None
 
+    # Metric definition
+    distance_func = WeightedPairwiseDistance().to(device)
+
     # Measure performance
     count = surface_vectors.size(0)
     ranks = np.zeros([count], dtype=int)
     for idx in tqdm.tqdm(range(count)):
         surface_vector = torch.unsqueeze(surface_vectors[idx], 0)
-        distances = torch.pow(torch.sum(torch.pow(overhead_vectors - surface_vector, 2), dim=1), 0.5)
+        distances = distance_func(overhead_vectors, surface_vector)
         distance = distances[idx]
         ranks[idx] = torch.sum(torch.le(distances, distance)).item()
     top_one = np.sum(ranks <= 1) / count * 100
@@ -427,7 +449,8 @@ class Translator(object):
     Translate feature vector(s) from one feature space to another by using
     a lookup table of pairs of corresponding feature vectors in both spaces.
     """
-    def __init__(self, domain_file, codomain_file):
+    def __init__(self, domain_file, codomain_file,
+                 dist_func=WeightedPairwiseDistance()):
         # Load lookup table
         domain_dataset = OneDataset(domain_file)
         self.domain_vectors = torch.tensor(domain_dataset.df.iloc[:, 3:].values, device=device, dtype=torch.float32)
@@ -435,10 +458,11 @@ class Translator(object):
         codomain_dataset = OneDataset(codomain_file)
         self.codomain_vectors = torch.tensor(codomain_dataset.df.iloc[:, 3:].values, device=device, dtype=torch.float32)
         codomain_dataset = None
+        self.dist_func = dist_func.to(device)
 
     def translate_vector(self, input_vector, n=30):
         input_vector = torch.unsqueeze(input_vector, 0).to(device)
-        distances = torch.pow(torch.sum(torch.pow(self.domain_vectors - input_vector, 2), dim=1), 0.5)
+        distances = self.dist_func(domain_vectors, input_vector)
         _, closest_idxs = torch.topk(distances, k=n, largest=False) # unsorted
         corres_vectors = torch.index_select(self.codomain_vectors, 0, closest_idxs)
         output_vector = torch.mean(corres_vectors, 0)
