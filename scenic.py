@@ -234,8 +234,8 @@ def extract_features(input_file, output_file, view='surface', rule='cvusa',
 
 
 def feature_weights(weight_outdoor_manmade=1.,
-                    weight_outdoor_natural=0.,
-                    weight_indoor=0.):
+                    weight_outdoor_natural=1.,
+                    weight_indoor=1.):
     """
     Return a vector of the importance of each scene class,
     based on its Level 1 assignment in the Scenes2 hierarchy.
@@ -315,7 +315,8 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
     loss_func = WeightedPairwiseDistance().to(device)
     # optimizer = torch.optim.SGD(model.parameters(), lr=1E-4,
     #                             momentum=0.9, weight_decay=5E-4)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1E-4)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=1E-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1E-5)
 
     # Optionally resume training from where it left off
     # Note: Add "resume=False" to arguments of train()
