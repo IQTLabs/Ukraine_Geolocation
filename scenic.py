@@ -11,7 +11,7 @@ import pandas as pd
 from PIL import Image
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-device_parallel = True
+device_parallel = False
 device_ids = None
 
 class OneDataset(torch.utils.data.Dataset):
@@ -289,7 +289,7 @@ class WeightedPairwiseDistance(torch.nn.Module):
 
 
 def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
-          batch_size=512, num_workers=12,
+          batch_size=128, num_workers=12,
           val_quantity=1000, num_epochs=999999):
     """
     Train a model to predict a feature vector from corresponding image.
@@ -368,9 +368,6 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
                 count = target_vectors.size(0)
                 running_count += count
                 running_loss += loss.item()
-
-                # if phase == 'train':
-                #     print('       : %f' % (loss.item() / count))
 
             print('  %5s: avg loss = %f' % (phase, running_loss / running_count))
 
