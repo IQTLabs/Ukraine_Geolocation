@@ -289,7 +289,7 @@ class WeightedPairwiseDistance(torch.nn.Module):
 
 
 def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
-          batch_size=256, num_workers=12,
+          batch_size=512, num_workers=12,
           val_quantity=1000, num_epochs=999999):
     """
     Train a model to predict a feature vector from corresponding image.
@@ -315,8 +315,12 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
     loss_func = WeightedPairwiseDistance().to(device)
     # optimizer = torch.optim.SGD(model.parameters(), lr=1E-4,
     #                             momentum=0.9, weight_decay=5E-4)
+    optimizer = torch.optim.SGD(model.parameters(), lr=1E-5,
+                                momentum=0.9, weight_decay=5E-4)
+    scheduler = torch.optim.lr_scheduler.StepLR(
+        optimizer, step_size=30, gamma=0.1)
     #optimizer = torch.optim.Adam(model.parameters(), lr=1E-4)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1E-5)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=1E-5)
 
     # Optionally resume training from where it left off
     # Note: Add "resume=False" to arguments of train()
@@ -365,7 +369,12 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
                 running_count += count
                 running_loss += loss.item()
 
+                # if phase == 'train':
+                #     print('       : %f' % (loss.item() / count))
+
             print('  %5s: avg loss = %f' % (phase, running_loss / running_count))
+
+        scheduler.step()
 
         # Save weights if this is the lowest observed validation loss
         if best_loss is None or running_loss / running_count < best_loss:
@@ -378,6 +387,7 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
                 'epoch': epoch + 1,
                 'state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
                 'val_loss': best_loss,
             }
             torch.save(checkpoint, checkpoint_path)
