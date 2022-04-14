@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 device_parallel = False
 device_ids = None
 
@@ -289,7 +289,7 @@ class WeightedPairwiseDistance(torch.nn.Module):
 
 
 def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
-          batch_size=128, num_workers=12,
+          batch_size=32, num_workers=12,
           val_quantity=1000, num_epochs=999999):
     """
     Train a model to predict a feature vector from corresponding image.
@@ -313,9 +313,7 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
     if device_parallel and torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model, device_ids=device_ids)
     loss_func = WeightedPairwiseDistance().to(device)
-    # optimizer = torch.optim.SGD(model.parameters(), lr=1E-4,
-    #                             momentum=0.9, weight_decay=5E-4)
-    optimizer = torch.optim.SGD(model.parameters(), lr=1E-5,
+    optimizer = torch.optim.SGD(model.parameters(), lr=3E-4,
                                 momentum=0.9, weight_decay=5E-4)
     scheduler = torch.optim.lr_scheduler.StepLR(
         optimizer, step_size=30, gamma=0.1)
@@ -364,6 +362,9 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
                         optimizer.zero_grad()
                         loss.backward()
                         optimizer.step()
+
+                        if epoch == 0:
+                            print(loss.item()/target_vectors.size(0))
 
                 count = target_vectors.size(0)
                 running_count += count
