@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 
-device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 device_parallel = False
 device_ids = None
 
@@ -288,7 +288,8 @@ class WeightedPairwiseDistance(torch.nn.Module):
         return torch.linalg.vector_norm(self.weights * (output-target), dim=1)
 
 
-def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
+def train(input_file, val_file=None,
+          view='overhead', rule='cvusa', arch='alexnet',
           batch_size=32, num_workers=12,
           val_quantity=1000, num_epochs=999999):
     """
@@ -299,10 +300,14 @@ def train(input_file, view='overhead', rule='cvusa', arch='alexnet',
     # Data and transforms
     train_transform = get_transform(view, preprocess=False, finalprocess=True, augment=True)
     val_transform = get_transform(view, preprocess=False, finalprocess=True, augment=False)
-    dataset = OneDataset(input_file, view=view, rule=rule, transform=None)
-    train_set, val_set = torch.utils.data.random_split(dataset, [len(dataset) - val_quantity, val_quantity])
-    train_set = TransformWrapper(train_set, train_transform)
-    val_set = TransformWrapper(val_set, val_transform)
+    if val_file is None:
+        dataset = OneDataset(input_file, view=view, rule=rule, transform=None)
+        train_set, val_set = torch.utils.data.random_split(dataset, [len(dataset) - val_quantity, val_quantity])
+        train_set = TransformWrapper(train_set, train_transform)
+        val_set = TransformWrapper(val_set, val_transform)
+    else:
+        train_set = OneDataset(input_file, view=view, rule=rule, transform=train_transform)
+        val_set = OneDataset(val_file, view=view, rule=rule, transform=val_transform)
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=num_workers)
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=num_workers)
     train_batches = len(train_set) // batch_size
@@ -471,7 +476,7 @@ class Translator(object):
 
     def translate_vector(self, input_vector, n=30):
         input_vector = torch.unsqueeze(input_vector, 0).to(device)
-        distances = self.dist_func(domain_vectors, input_vector)
+        distances = self.dist_func(self.domain_vectors, input_vector)
         _, closest_idxs = torch.topk(distances, k=n, largest=False) # unsorted
         corres_vectors = torch.index_select(self.codomain_vectors, 0, closest_idxs)
         output_vector = torch.mean(corres_vectors, 0)
