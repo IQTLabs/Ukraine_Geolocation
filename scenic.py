@@ -368,8 +368,8 @@ def train(input_file, val_file=None,
                         loss.backward()
                         optimizer.step()
 
-                        if epoch == 0:
-                            print(loss.item()/target_vectors.size(0))
+                        if loss.isnan().item():
+                            raise Exception('! Loss is not a number.')
 
                 count = target_vectors.size(0)
                 running_count += count
