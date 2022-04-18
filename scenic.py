@@ -449,13 +449,13 @@ def example_features(path, view='surface', verbose=True,
     probs = torch.nn.functional.softmax(logits, 0)
     if verbose:
         df = pd.read_csv(names_path, sep=' ', header=None,
-                         names=['scenes'], usecols=[0])
-        df['probs'] = probs.numpy()
-        df.sort_values('probs', ascending=False, inplace=True)
+                         names=['scene'], usecols=[0])
+        df['prob'] = probs.numpy()
+        df.sort_values('prob', ascending=False, inplace=True)
         df.reset_index(drop=True, inplace=True)
         print(path)
         print(df[:5])
-    return logits.squeeze()
+    return logits
 
 
 class Translator(object):
