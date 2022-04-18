@@ -57,6 +57,11 @@ def sweep(sat_path, bounds, projection, edge, offset,
     overhead_loader = torch.utils.data.DataLoader(overhead_set, batch_size=64,
                                                   shuffle=False, num_workers=1)
 
+    # Print surface features
+    if match:
+        example_features(surface_set[photo_row]['path_absolute'],
+                         view='surface', verbose=True)
+
     # Load the neural networks
     surface_model = load_model('surface').to(device)
     overhead_model = load_model('overhead').to(device)
