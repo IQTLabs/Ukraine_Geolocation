@@ -57,11 +57,6 @@ def sweep(sat_path, bounds, projection, edge, offset,
     overhead_loader = torch.utils.data.DataLoader(overhead_set, batch_size=64,
                                                   shuffle=False, num_workers=1)
 
-    # Print surface features
-    if match:
-        example_features(surface_set[photo_row]['path_absolute'],
-                         view='surface', verbose=True)
-
     # Load the neural networks
     surface_model = load_model('surface').to(device)
     overhead_model = load_model('overhead').to(device)
@@ -73,8 +68,19 @@ def sweep(sat_path, bounds, projection, edge, offset,
     torch.set_grad_enabled(False)
 
     # Surface photo's features
-    surface_vectors = surface_model(surface_batch)
-    surface_vector = torch.unsqueeze(surface_vectors[0], 0)
+    surface_vector = surface_model(surface_batch)
+
+    # Describe surface image
+    if match:
+        names_path = 'categories_places365.txt'
+        probs = torch.nn.functional.softmax(surface_vector.squeeze(), 0)
+        df = pd.read_csv(names_path, sep=' ', header=None,
+                         names=['scene'], usecols=[0])
+        df['prob'] = probs.cpu().numpy()
+        df.sort_values('prob', ascending=False, inplace=True)
+        df.reset_index(drop=True, inplace=True)
+        print(surface_set[photo_row]['path_absolute'])
+        print(df[:5])
 
     # Overhead images' features
     feat_vecs = None
