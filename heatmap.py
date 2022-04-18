@@ -72,11 +72,14 @@ def sweep(sat_path, bounds, projection, edge, offset,
 
     # Describe surface image
     if match:
-        names_path = 'categories_places365.txt'
+        # Load scenes
+        scene_path = 'categories_places365.txt'
+        scene_list = pd.read_csv(scene_path, sep=' ', header=None,
+                         names=['scene'], usecols=[0])['scene'].tolist()
+
+        # Print best scene matches for surface image
         probs = torch.nn.functional.softmax(surface_vector.squeeze(), 0)
-        df = pd.read_csv(names_path, sep=' ', header=None,
-                         names=['scene'], usecols=[0])
-        df['prob'] = probs.cpu().numpy()
+        df = pd.DataFrame({'scene': scene_list, 'prob': probs.cpu().numpy()})
         df.sort_values('prob', ascending=False, inplace=True)
         df.reset_index(drop=True, inplace=True)
         print(surface_set[photo_row]['path_absolute'])
@@ -97,9 +100,6 @@ def sweep(sat_path, bounds, projection, edge, offset,
 
     # Find best scene match for each overhead image
     if match:
-        scene_path = 'categories_places365.txt'
-        scene_list = pd.read_csv(scene_path, sep=' ', header=None,
-                         names=['scenes'], usecols=[0])['scenes'].tolist()
         match_indices = feat_vecs.argmax(dim=1).cpu().numpy()
         match_names = [scene_list[i] for i in match_indices]
 
