@@ -126,7 +126,7 @@ class QuadRotation(object):
         return data
 
 
-def get_transform(view='surface', preprocess=True, finalprocess=True, augment=False, already_tensor=False):
+def get_transform_highres(view='surface', preprocess=True, finalprocess=True, augment=False, already_tensor=False):
     """
     Return image transform
     """
@@ -181,6 +181,9 @@ def get_transform_lowres(view='surface', preprocess=True, finalprocess=True, aug
             [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]))
     transform = torchvision.transforms.Compose(transforms)
     return transform
+
+
+get_transform = get_transform_lowres
 
 
 def load_model(view='surface', arch='alexnet', suffix=None):
