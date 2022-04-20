@@ -144,9 +144,9 @@ def get_transform_highres(view='surface', preprocess=True, finalprocess=True, au
             if view == 'surface':
                 transforms.append(torchvision.transforms.RandomResizedCrop(224))
             elif view == 'overhead':
-                #transforms.append(torchvision.transforms.CenterCrop(364))
-                transforms.append(torchvision.transforms.RandomRotation((0,360), interpolation=torchvision.transforms.InterpolationMode.BILINEAR))
                 transforms.append(torchvision.transforms.Resize((800,800)))
+                transforms.append(torchvision.transforms.CenterCrop(364))
+                transforms.append(torchvision.transforms.RandomRotation((0,360), interpolation=torchvision.transforms.InterpolationMode.BILINEAR))
                 transforms.append(torchvision.transforms.CenterCrop(256))
                 transforms.append(torchvision.transforms.RandomResizedCrop(224, scale=(0.8, 1.)))
             transforms.append(torchvision.transforms.RandomHorizontalFlip())
