@@ -21,7 +21,7 @@ class OneDataset(torch.utils.data.Dataset):
     path[,latitude,longitude[,feature_vector_components]]
     where brackets denote optional entries
     """
-    def __init__(self, input_file, view='surface', zoom=18, rule='cvusa', full=True, transform=None):
+    def __init__(self, input_file, view='surface', zoom=18, rule='cvusa', full=False, transform=None):
         self.input_file = input_file
         self.view = view # surface, overhead
         self.zoom = zoom # 18, 16, 14
@@ -185,7 +185,7 @@ def get_transform_lowres(view='surface', preprocess=True, finalprocess=True, aug
     return transform
 
 
-get_transform = get_transform_highres
+get_transform = get_transform_lowres
 
 
 def load_model(view='surface', arch='alexnet', suffix=None):
@@ -354,12 +354,11 @@ def train(input_file, val_file=None,
     if device_parallel and torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model, device_ids=device_ids)
     loss_func = WeightedPairwiseDistance().to(device)
-    optimizer = torch.optim.SGD(model.parameters(), lr=3E-4,
-                                momentum=0.9, weight_decay=5E-4)
-    scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer, step_size=30, gamma=0.1)
-    #optimizer = torch.optim.Adam(model.parameters(), lr=1E-4)
-    #optimizer = torch.optim.Adam(model.parameters(), lr=1E-5)
+    # optimizer = torch.optim.SGD(model.parameters(), lr=3E-4,
+    #                             momentum=0.9, weight_decay=5E-4)
+    # scheduler = torch.optim.lr_scheduler.StepLR(
+    #     optimizer, step_size=30, gamma=0.1)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1E-4)
 
     # Optionally resume training from where it left off
     # Note: Add "resume=False" to arguments of train()
@@ -413,7 +412,7 @@ def train(input_file, val_file=None,
 
             print('  %5s: avg loss = %f' % (phase, running_loss / running_count))
 
-        scheduler.step()
+        # scheduler.step()
 
         # Save weights if this is the lowest observed validation loss
         if best_loss is None or running_loss / running_count < best_loss:
@@ -426,7 +425,7 @@ def train(input_file, val_file=None,
                 'epoch': epoch + 1,
                 'state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
-                'scheduler_state_dict': scheduler.state_dict(),
+                #'scheduler_state_dict': scheduler.state_dict(),
                 'val_loss': best_loss,
             }
             torch.save(checkpoint, checkpoint_path)
