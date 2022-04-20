@@ -21,12 +21,13 @@ class OneDataset(torch.utils.data.Dataset):
     path[,latitude,longitude[,feature_vector_components]]
     where brackets denote optional entries
     """
-    def __init__(self, input_file, view='surface', zoom=18, rule='cvusa', transform=None):
+    def __init__(self, input_file, view='surface', zoom=18, rule='cvusa', full=True, transform=None):
         self.input_file = input_file
         self.view = view # surface, overhead
         self.zoom = zoom # 18, 16, 14
         self.rule = rule # cvusa, witw, gtcrossview, None
         self.transform = transform
+        fstr = '_full' if full else ''
 
         # Load entries from input file
         if os.path.splitext(self.input_file)[1].lower() \
@@ -49,7 +50,7 @@ class OneDataset(torch.utils.data.Dataset):
         if self.view == 'overhead' and self.rule in ['cvusa', 'cw', 'cgw']:
             # Convert CVUSA streetview surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
-                'streetview/cutouts', 'streetview_aerial_full/' + str(self.zoom),
+                'streetview/cutouts', 'streetview_aerial' + fstr + '/' + str(self.zoom),
                 n=1, regex=False)
             self.paths_relative = self.paths_relative.str.replace(
                 '_90.jpg', '.jpg', n=1, regex=False)
@@ -57,7 +58,7 @@ class OneDataset(torch.utils.data.Dataset):
                 '_270.jpg', '.jpg', n=1, regex=False)
             # Convert CVUSA flickr surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
-                'flickr', 'flickr_aerial_full/' + str(self.zoom), n=1, regex=False)
+                'flickr', 'flickr_aerial' + fstr + '/' + str(self.zoom), n=1, regex=False)
             self.paths_relative = self.paths_relative.str.replace(
                 r'[0-9]+@N[0-9]+_[0-9]+_', '', n=1, regex=True)
             self.paths_relative = self.paths_relative.str.replace(
@@ -65,7 +66,7 @@ class OneDataset(torch.utils.data.Dataset):
         if self.view == 'overhead' and self.rule in ['witw', 'cw', 'cgw']:
             # Convert WITW surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
-                'surface', 'overhead_full', n=1, regex=False)
+                'surface', 'overhead' + fstr, n=1, regex=False)
         if self.view == 'overhead' and self.rule in ['gtcrossview', 'cgw']:
             # Convert GTCrossView surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
