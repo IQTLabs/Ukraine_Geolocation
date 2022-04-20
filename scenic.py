@@ -199,6 +199,11 @@ def load_model(view='surface', arch='alexnet', suffix=None):
     model = torchvision.models.__dict__[arch](num_classes=365)
     checkpoint = torch.load(model_path, map_location=lambda storage, loc: storage)
     state_dict = {str.replace(k,'module.',''): v for k,v in checkpoint['state_dict'].items()}
+    if arch == 'densenet161':
+        state_dict = {str.replace(k,'norm.1','norm1'): v for k,v in state_dict.items()}
+        state_dict = {str.replace(k,'norm.2','norm2'): v for k,v in state_dict.items()}
+        state_dict = {str.replace(k,'conv.1','conv1'): v for k,v in state_dict.items()}
+        state_dict = {str.replace(k,'conv.2','conv2'): v for k,v in state_dict.items()}
     model.load_state_dict(state_dict)
     model.eval()
     return model
