@@ -141,14 +141,15 @@ def get_transform_highres(view='surface', preprocess=True, finalprocess=True, au
                 transforms.append(torchvision.transforms.Resize((800,800)))
                 transforms.append(torchvision.transforms.CenterCrop(224))
         else: # augmentation
-            transforms.append(torchvision.transforms.RandomHorizontalFlip())
             if view == 'surface':
                 transforms.append(torchvision.transforms.RandomResizedCrop(224))
             elif view == 'overhead':
+                #transforms.append(torchvision.transforms.CenterCrop(364))
                 transforms.append(torchvision.transforms.RandomRotation((0,360), interpolation=torchvision.transforms.InterpolationMode.BILINEAR))
                 transforms.append(torchvision.transforms.Resize((800,800)))
                 transforms.append(torchvision.transforms.CenterCrop(256))
                 transforms.append(torchvision.transforms.RandomResizedCrop(224, scale=(0.8, 1.)))
+            transforms.append(torchvision.transforms.RandomHorizontalFlip())
         if not already_tensor:
             transforms.append(torchvision.transforms.ToTensor())
         transforms.append(torchvision.transforms.Normalize(
@@ -183,7 +184,7 @@ def get_transform_lowres(view='surface', preprocess=True, finalprocess=True, aug
     return transform
 
 
-get_transform = get_transform_lowres
+get_transform = get_transform_highres
 
 
 def load_model(view='surface', arch='alexnet', suffix=None):
@@ -459,6 +460,8 @@ def metrics(surface_file, overhead_file):
     top_five = np.sum(ranks <= 5) / count * 100
     top_ten = np.sum(ranks <= 10) / count * 100
     top_percent = np.sum(ranks * 100 <= count) / count * 100
+    top_fivepct = np.sum(ranks * 20 <= count) / count * 100
+    top_tenpct = np.sum(ranks * 10 <= count) / count * 100
     mean = np.mean(ranks)
     median = np.median(ranks)
 
@@ -467,6 +470,8 @@ def metrics(surface_file, overhead_file):
     print('Top  5: {:.2f}%'.format(top_five))
     print('Top 10: {:.2f}%'.format(top_ten))
     print('Top 1%: {:.2f}%'.format(top_percent))
+    print('Top 5%: {:.2f}%'.format(top_fivepct))
+    print('Top10%: {:.2f}%'.format(top_tenpct))
     print('Avg. Rank: {:.2f}'.format(mean))
     print('Med. Rank: {:.2f}'.format(median))
     print('Locations: {}'.format(count))
