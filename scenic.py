@@ -11,7 +11,7 @@ import pandas as pd
 from PIL import Image
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-device_parallel = False
+device_parallel = True
 device_ids = None
 
 class OneDataset(torch.utils.data.Dataset):
@@ -240,7 +240,8 @@ def preprocess(input_file, output_dir, view='surface', rule='cvusa',
         data['image'].save(output_path)
 
 
-def extract_features(input_file, output_file, view='surface', rule='cvusa',
+def extract_features(input_file, output_file,
+                     view='surface', rule='cvusa', arch='alexnet',
                      batch_size=256, num_workers=12,
                      populate_latlon=False):
     """
@@ -252,7 +253,7 @@ def extract_features(input_file, output_file, view='surface', rule='cvusa',
     if populate_latlon:
         dataset.populate_latlon()
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=num_workers)
-    model = load_model(view).to(device)
+    model = load_model(view, arch).to(device)
     if device_parallel and torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model, device_ids=device_ids)
     torch.set_grad_enabled(False)
