@@ -188,26 +188,30 @@ def get_transform_lowres(view='surface', preprocess=True, finalprocess=True, aug
 get_transform = get_transform_highres
 
 
-def load_model(view='surface', arch='alexnet', suffix=None, load_weights=True):
+def load_model(view='surface', arch='alexnet', suffix=None):
     """
     Based on https://github.com/CSAILVision/places365/blob/master/run_placesCNN_basic.py by Bolei Zhou
     """
     model = torchvision.models.__dict__[arch](num_classes=365)
-    if not load_weights:
-        model.eval()
-        return model
-    if suffix is None:
-        model_path = '../weights/%s_%s.pth.tar' % (arch, view)
-    else:
-        model_path = '../weights/%s_%s_%s.pth.tar' % (arch, view, suffix)
-    checkpoint = torch.load(model_path, map_location=lambda storage, loc: storage)
-    state_dict = {str.replace(k,'module.',''): v for k,v in checkpoint['state_dict'].items()}
-    if arch == 'densenet161':
-        state_dict = {str.replace(k,'norm.1','norm1'): v for k,v in state_dict.items()}
-        state_dict = {str.replace(k,'norm.2','norm2'): v for k,v in state_dict.items()}
-        state_dict = {str.replace(k,'conv.1','conv1'): v for k,v in state_dict.items()}
-        state_dict = {str.replace(k,'conv.2','conv2'): v for k,v in state_dict.items()}
-    model.load_state_dict(state_dict)
+    if view is not None:
+        if suffix is None:
+            model_path = '../weights/%s_%s.pth.tar' % (arch, view)
+        else:
+            model_path = '../weights/%s_%s_%s.pth.tar' % (arch, view, suffix)
+        checkpoint = torch.load(
+            model_path, map_location=lambda storage, loc: storage)
+        state_dict = {str.replace(k,'module.',''): v
+                      for k,v in checkpoint['state_dict'].items()}
+        if arch == 'densenet161':
+            state_dict = {str.replace(k,'norm.1','norm1'): v
+                          for k,v in state_dict.items()}
+            state_dict = {str.replace(k,'norm.2','norm2'): v
+                          for k,v in state_dict.items()}
+            state_dict = {str.replace(k,'conv.1','conv1'): v
+                          for k,v in state_dict.items()}
+            state_dict = {str.replace(k,'conv.2','conv2'): v
+                          for k,v in state_dict.items()}
+        model.load_state_dict(state_dict)
     model.eval()
     return model
 
@@ -359,7 +363,7 @@ def train(input_file, val_file=None,
     val_batches = -((-len(val_set)) // batch_size)
 
     # Model, loss, optimizer (Note: Init model w/ surface weights regardless)
-    model = load_model(view='surface', arch=arch, load_weights=False).to(device)
+    model = load_model(view='surface', arch=arch).to(device)
     if device_parallel and torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model, device_ids=device_ids)
     loss_func = WeightedPairwiseDistance().to(device)
