@@ -453,10 +453,12 @@ def metrics(surface_file, overhead_file):
     """
     # Data
     surface_dataset = OneDataset(surface_file, view='surface')
-    surface_vectors = torch.tensor(surface_dataset.df.iloc[:, 3:].values, device=device, dtype=torch.float32)
+    surface_vectors = torch.tensor(surface_dataset.df.iloc[:, 3:].values,
+                                   device=device, dtype=torch.float32)
     surface_dataset = None
     overhead_dataset = OneDataset(overhead_file, view='overhead')
-    overhead_vectors = torch.tensor(overhead_dataset.df.iloc[:, 3:].values, device=device, dtype=torch.float32)
+    overhead_vectors = torch.tensor(overhead_dataset.df.iloc[:, 3:].values,
+                                    device=device, dtype=torch.float32)
     overhead_dataset = None
 
     # Metric definition
@@ -489,6 +491,41 @@ def metrics(surface_file, overhead_file):
     print('Avg. Rank: {:.2f}'.format(mean))
     print('Med. Rank: {:.2f}'.format(median))
     print('Locations: {}'.format(count))
+
+
+def score_file(input_file, output_file, ref_file, ref_index, view='surface'):
+    """
+    Given a file of feature vectors, compute their distances from a single
+    reference feature vector in another file.  Save the scores (the negatives
+    of the distances) in a new file.
+    """
+    # Data
+    src_dataset = OneDataset(input_file)
+    src_vectors = torch.tensor(src_dataset.df.iloc[:, 3:].values,
+                               device=device, dtype=torch.float32)
+    ref_dataset = OneDataset(ref_file)
+    ref_vector = torch.tensor(
+        ref_dataset.df.iloc[ref_index:ref_index, 3:].values,
+        device=device, dtype=torch.float32)
+    if len(ref_vector) == 0:
+        # Feature vector absent and must be generated from model
+        transform = get_transform(view, preprocess=False, finalprocess=True)
+        model = load_model(view).to(device)
+        image_path = os.path.join(
+            ref_dataset.input_dir,
+            ref_dataset.paths_relative.iloc[ref_index])
+        image = Image.open(image_path)
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        image = transform(image).to(device)
+        ref_vector = model(image.unsqueeze(0))
+
+    # Measure distances
+    distance_func = WeightedPairwiseDistance().to(device)
+    distances = distance_func(src_vectors, ref_vector)
+    scores = pd.DataFrame(-distances.cpu().detach().numpy())
+    src_dataset.df = pd.concat([src_dataset.df.iloc[:, :3], scores], axis=1)
+    src_dataset.save(output_file)
 
 
 def example_features(path, view='surface', verbose=True,
