@@ -96,7 +96,8 @@ def sweep(sat_path, bounds, projection, edge, offset,
             feat_vecs = torch.cat((feat_vecs, feat_vecs_part), dim=0)
 
     # Calculate score for each overhead image
-    distances = torch.pow(torch.sum(torch.pow(feat_vecs - surface_vector, 2), dim=1), 0.5)
+    distance_func = WeightedPairwiseDistance().to(device)
+    distances = distance_func(feat_vecs, surface_vector)
 
     # Find best scene match for each overhead image
     if match:
@@ -107,13 +108,13 @@ def sweep(sat_path, bounds, projection, edge, offset,
     df = pd.DataFrame({
         'x': center_eastings,
         'y': center_northings,
-        'similar': -distances.cpu().numpy(),
+        'similar': -distances.cpu().detach().numpy(),
     })
     if match:
         df['match'] = match_names
-    path_out_csv = os.path.splitext(csv_path)[0]+'.csv'
-    path_out_shp = os.path.splitext(csv_path)[0]+'.shp'
-    path_out_tif = os.path.splitext(csv_path)[0]+'.tif'
+    path_out_csv = os.path.splitext(csv_path)[0] + '.csv'
+    path_out_shp = os.path.splitext(csv_path)[0] + '.shp'
+    path_out_tif = os.path.splitext(csv_path)[0] + '.tif'
     df.to_csv(path_out_csv, index=False)
     cmd = 'ogr2ogr -s_srs EPSG:' + str(projection) + ' -t_srs EPSG:' + str(projection) + ' -oo X_POSSIBLE_NAMES=x -oo Y_POSSIBLE_NAMES=y -f "ESRI Shapefile" ' + path_out_shp + ' ' + path_out_csv
     print(cmd)
