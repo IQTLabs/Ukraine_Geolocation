@@ -35,7 +35,8 @@ class OneDataset(torch.utils.data.Dataset):
             typedict = {0:'string', 1:'string', 2:'string'}
             for i in range(3, 3+365):
                 typedict[i] = 'float32'
-            self.df = pd.read_csv(self.input_file, header=None, dtype=typedict)
+            self.df = pd.read_csv(self.input_file, header=None,
+                                  dtype=typedict, keep_default_na=False)
             self.df.rename(columns={0:'path', 1:'lat', 2:'lon'}, inplace=True)
         else:
             self.df = pd.read_pickle(self.input_file)
