@@ -21,7 +21,7 @@ class OneDataset(torch.utils.data.Dataset):
     path[,latitude,longitude[,feature_vector_components]]
     where brackets denote optional entries
     """
-    def __init__(self, input_file, view='surface', zoom=18, rule='cvusa', full=True, transform=None):
+    def __init__(self, input_file, view='surface', zoom=18, rule='cvusa', full=False, transform=None):
         self.input_file = input_file
         self.view = view # surface, overhead
         self.zoom = zoom # 18, 16, 14
@@ -59,7 +59,8 @@ class OneDataset(torch.utils.data.Dataset):
                 '_270.jpg', '.jpg', n=1, regex=False)
             # Convert CVUSA flickr surface path to overhead path
             self.paths_relative = self.paths_relative.str.replace(
-                'flickr', 'flickr_aerial' + fstr + '/' + str(self.zoom), n=1, regex=False)
+                'flickr', 'flickr_aerial' + fstr + '/' + str(self.zoom),
+                n=1, regex=False)
             self.paths_relative = self.paths_relative.str.replace(
                 r'[0-9]+@N[0-9]+_[0-9]+_', '', n=1, regex=True)
             self.paths_relative = self.paths_relative.str.replace(
@@ -186,7 +187,7 @@ def get_transform_lowres(view='surface', preprocess=True, finalprocess=True, aug
     return transform
 
 
-get_transform = get_transform_highres
+get_transform = get_transform_lowres
 
 
 def load_model(view='surface', arch='alexnet', suffix=None):
