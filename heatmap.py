@@ -28,7 +28,8 @@ class TileDataset(torch.utils.data.Dataset):
 
 
 def sweep(sat_path, bounds, projection, edge, offset,
-          photo_path, photo_row, csv_path, match):
+          photo_path, photo_row, csv_path, match,
+          tensor_path, arch, suffix):
 
     # Compute center and window for each satellite tile
     center_eastings = []
@@ -59,7 +60,7 @@ def sweep(sat_path, bounds, projection, edge, offset,
 
     # Load the neural networks
     surface_model = load_model('surface').to(device)
-    overhead_model = load_model('overhead').to(device)
+    overhead_model = load_model('overhead', arch, suffix).to(device)
     # if device_parallel and torch.cuda.device_count() > 1:
     #     surface_model = torch.nn.DataParallel(
     #         surface_model, device_ids=device_ids)
@@ -86,14 +87,18 @@ def sweep(sat_path, bounds, projection, edge, offset,
         print(df[:5])
 
     # Overhead images' features
-    feat_vecs = None
-    for batch, data in enumerate(tqdm.tqdm(overhead_loader)):
-        images = data['image'].to(device)
-        feat_vecs_part = overhead_model(images)
-        if feat_vecs is None:
-            feat_vecs = feat_vecs_part
-        else:
-            feat_vecs = torch.cat((feat_vecs, feat_vecs_part), dim=0)
+    if tensor_path is not None and os.path.exists(tensor_path):
+        feat_vecs = torch.load(tensor_path)
+    else:
+        feat_vecs = None
+        for batch, data in enumerate(tqdm.tqdm(overhead_loader)):
+            images = data['image'].to(device)
+            feat_vecs_part = overhead_model(images)
+            if feat_vecs is None:
+                feat_vecs = feat_vecs_part
+            else:
+                feat_vecs = torch.cat((feat_vecs, feat_vecs_part), dim=0)
+        torch.save(feat_vecs, tensor_path)
 
     # Calculate score for each overhead image
     distance_func = WeightedPairwiseDistance().to(device)
@@ -176,11 +181,21 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--match',
                         action='store_true',
                         help='Flag to include best scene matches in CSV file')
+    parser.add_argument('-t', '--tensorpath',
+                        default=None,
+                        help='Optional file path to save/reuse overhead image features.  Delete this file before running with changed settings.')
+    parser.add_argument('-a', '--arch',
+                        default='alexnet',
+                        help='Model architecture')
+    parser.add_argument('-x', '--suffix',
+                        default=None,
+                        help='Suffix of model weights file name')
     args = parser.parse_args()
     if args.gpu is not None:
         cvig.device = torch.device('cuda:' + str(args.gpu))
         device = torch.device('cuda:' + str(args.gpu))
     sweep(args.satpath, args.bounds, args.projection, args.edge, args.offset,
-          args.photopath, args.row, args.csvpath, args.match)
+          args.photopath, args.row, args.csvpath, args.match, args.tensorpath,
+          args.arch, args.suffix)
     if args.image:
         layer(args.satpath, args.bounds, args.layerpath)
