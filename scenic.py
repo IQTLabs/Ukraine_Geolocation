@@ -21,7 +21,7 @@ class OneDataset(torch.utils.data.Dataset):
     path[,latitude,longitude[,feature_vector_components]]
     where brackets denote optional entries
     """
-    def __init__(self, input_file, view='surface', zoom=18, rule='cvusa', full=False, transform=None):
+    def __init__(self, input_file, view='surface', zoom=18, rule='cvusa', full=True, transform=None):
         self.input_file = input_file
         self.view = view # surface, overhead
         self.zoom = zoom # 18, 16, 14
@@ -141,7 +141,7 @@ def get_transform_highres(view='surface', preprocess=True, finalprocess=True, au
             if view == 'surface':
                 transforms.append(torchvision.transforms.Resize((224,224)))
             elif view == 'overhead':
-                transforms.append(torchvision.transforms.Resize((800,800)))
+                #transforms.append(torchvision.transforms.Resize((800,800)))
                 transforms.append(torchvision.transforms.CenterCrop(224))
         else: # augmentation
             if view == 'surface':
@@ -187,7 +187,7 @@ def get_transform_lowres(view='surface', preprocess=True, finalprocess=True, aug
     return transform
 
 
-get_transform = get_transform_lowres
+get_transform = get_transform_highres
 
 
 def load_model(view='surface', arch='alexnet', suffix=None):
@@ -509,7 +509,7 @@ def score_file(input_file, output_file, ref_file, ref_index, view='surface'):
         ref_dataset.df.iloc[ref_index:ref_index, 3:].values,
         device=device, dtype=torch.float32)
     if len(ref_vector) == 0:
-        # Feature vector absent and must be generated from model
+        # Reference feature vector absent and must be generated from model
         transform = get_transform(view, preprocess=False, finalprocess=True)
         model = load_model(view).to(device)
         image_path = os.path.join(
