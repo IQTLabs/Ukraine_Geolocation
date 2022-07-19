@@ -4,7 +4,7 @@ The code in this repo uses deep learning to geolocate photographs (such as from 
 
 ## Setup & Training
 
-Run the first setup script:
+Download the two setup scripts, then run the first setup script:
 ```
 ./setup_script_part1.sh
 ```
