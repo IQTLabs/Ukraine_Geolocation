@@ -8,9 +8,7 @@ tar -xf streetview.tar
 tar -xf streetview_aerial.tar
 tar -xf metadata.tar
 
-# Reorganizing files
-mv metadata/flickr_images.txt ./
-mv metadata/streetview_images.txt ./
+# File list
 cat flickr_images.txt streetview_images.txt > all_images.txt
 
 # Preprocessing
