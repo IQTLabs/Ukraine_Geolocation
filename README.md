@@ -1,4 +1,4 @@
-# Ukraine Geolocalization
+# Ukraine Geolocation
 
 The code in this repo uses deep learning to geolocate photographs (such as from social media) by comparison to satellite imagery.  The same trained model can be used for neighborhood-scale or national-scale geolocation.  This code is used in [Deep Geolocation with Satellite Imagery of Ukraine](https://www.iqt.org/blog/).
 
@@ -70,6 +70,4 @@ The file `scores.csv` will show how well each point matches the selected photo. 
 
 ## Credits
 
-`scenic.py` is derived from [`cvig_fov.py`](https://github.com/IQTLabs/WITW/blob/main/model/cvig_fov.py)
-`heatmap.py` is derived from [`heatmap.py`](https://github.com/IQTLabs/WITW/blob/main/tools/heatmap/heatmap.py)
-The files in this repo are released under the same license (Apache 2.0) as those source files.
+`scenic.py` is derived from [`cvig_fov.py`](https://github.com/IQTLabs/WITW/blob/main/model/cvig_fov.py).  `heatmap.py` is derived from [`heatmap.py`](https://github.com/IQTLabs/WITW/blob/main/tools/heatmap/heatmap.py).  The files in this repo are released under the same license (Apache 2.0) as those source files.
