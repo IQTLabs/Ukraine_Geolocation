@@ -19,7 +19,7 @@ Run the second setup script:
 Train the model:
 ```
 # In Python (run within code/ folder)
-from scenic import *
+from scenes import *
 extract_features('../data/all_images.txt',
                  '../data/all_surface.pkl',
                  view='surface', rule='cvusa',
@@ -47,21 +47,21 @@ Save a file called `photo_paths.csv`, containing paths to ground-level photograp
 
 To see all syntax options:
 ```
-./web.py -h
+./websample.py -h
 ```
 
 ### Usage Example
 
-Run `roadpoints` to get a list of random geographic points, then run `web` to get a feature vector for each point, then use the `score_file` function to compare a photo to those feature vectors, as shown below.
+Run `roadpoints` to get a list of random geographic points, then run `websample` to get a feature vector for each point, then use the `score_file` Python function to compare a photo to those feature vectors, as shown below.
 Note: This requires your Bing Maps API key saved to a file at `PATH_TO_KEY`.
 ```
 ./roadpoints.py --output points.csv
-./web.py --input points.csv --output features.csv --tempdir TEMPORARY_DIRECTORY --arch densenet161 --pause 10 --num 10000 -k PATH_TO_KEY
+./websample.py --input points.csv --output features.csv --tempdir TEMPORARY_DIRECTORY --arch densenet161 --pause 10 --num 10000 -k PATH_TO_KEY
 ```
 Letting `photo_paths.csv` and `LINE_NUM` have the same meaning as in the previous usage example:
 ```
 # In Python: (run within code/ folder)
-from scenic import *
+from scenes import *
 score_file('features.csv',
            'scores.csv',
            'photo_paths.csv', LINE_NUM)
@@ -70,4 +70,4 @@ The file `scores.csv` will show how well each point matches the selected photo. 
 
 ## Credits
 
-`scenic.py` is derived from [`cvig_fov.py`](https://github.com/IQTLabs/WITW/blob/main/model/cvig_fov.py).  `heatmap.py` is derived from [`heatmap.py`](https://github.com/IQTLabs/WITW/blob/main/tools/heatmap/heatmap.py).  The files in this repo are released under the same license (Apache 2.0) as those source files.
+`scenes.py` is derived from [`cvig_fov.py`](https://github.com/IQTLabs/WITW/blob/main/model/cvig_fov.py).  `heatmap.py` is derived from [`heatmap.py`](https://github.com/IQTLabs/WITW/blob/main/tools/heatmap/heatmap.py).  The files in this repo are released under the same license (Apache 2.0) as those source files.

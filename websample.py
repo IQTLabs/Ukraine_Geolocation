@@ -6,7 +6,7 @@ from PIL import Image
 import time
 import tqdm
 
-from scenic import *
+from scenes import *
 
 def web_features(input_file, output_file, temp_dir, view, arch, suffix, num, backup_interval, pause, key):
     """

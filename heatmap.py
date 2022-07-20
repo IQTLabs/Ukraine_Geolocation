@@ -5,7 +5,7 @@ import subprocess
 from osgeo import osr
 from osgeo import gdal
 
-from scenic import *
+from scenes import *
 
 
 class TileDataset(torch.utils.data.Dataset):

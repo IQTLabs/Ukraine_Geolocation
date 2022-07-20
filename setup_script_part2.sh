@@ -14,7 +14,7 @@ cat flickr_images.txt streetview_images.txt > all_images.txt
 # Preprocessing
 cd ../code
 conda activate geoloc
-python -c "from scenic import *; preprocess('../data/all_images.txt', '../data/preprocessed', view='surface')"
+python -c "from scenes import *; preprocess('../data/all_images.txt', '../data/preprocessed', view='surface')"
 
 # Reorganizing folders
 cd ../data
