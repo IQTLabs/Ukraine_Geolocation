@@ -1,6 +1,6 @@
 # Ukraine Geolocation
 
-The code in this repo uses deep learning to try to geolocate photographs (such as from social media) by comparison to satellite imagery.  The same trained model can be used for neighborhood-scale or national-scale geolocation.  This code is used in [Deep Geolocation with Satellite Imagery of Ukraine](https://www.iqt.org/blog/).
+The code in this repo uses deep learning to try to geolocate photographs (such as from social media) by comparison to satellite imagery.  The same trained model can be used for neighborhood-scale or national-scale geolocation.  This code is used in [Deep Geolocation with Satellite Imagery of Ukraine](https://www.iqt.org/deep-geolocation-with-satellite-imagery-of-ukraine/).
 
 ## Setup & Training
 
